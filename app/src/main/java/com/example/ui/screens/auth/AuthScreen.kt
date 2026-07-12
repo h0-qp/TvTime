@@ -18,6 +18,10 @@ import com.example.ui.theme.GoldYellow
 import com.example.ui.theme.TextPrimary
 import com.example.ui.theme.TextSecondary
 import com.example.ui.theme.TrueBlack
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
+import androidx.compose.foundation.Image
+import androidx.compose.ui.layout.ContentScale
 
 @Composable
 fun AuthScreen(
@@ -27,7 +31,7 @@ fun AuthScreen(
 ) {
     val viewModel: AuthViewModel = viewModel(factory = AuthViewModelFactory(authRepository))
     val uiState by viewModel.uiState.collectAsState()
-    
+
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var isSignUpMode by remember { mutableStateOf(false) }
@@ -64,6 +68,7 @@ fun AuthScreen(
             fontSize = 28.sp,
             fontWeight = FontWeight.Bold
         )
+
         Spacer(modifier = Modifier.height(32.dp))
 
         // Input Fields
@@ -95,7 +100,6 @@ fun AuthScreen(
                 unfocusedTextColor = TextPrimary
             )
         )
-
         Spacer(modifier = Modifier.height(24.dp))
 
         if (uiState is AuthUiState.Loading) {
@@ -120,6 +124,27 @@ fun AuthScreen(
                 Text(
                     text = if (isSignUpMode) "إنشاء حساب" else "تسجيل الدخول",
                     color = TrueBlack,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 16.sp
+                )
+            }
+            
+            Spacer(modifier = Modifier.height(16.dp))
+            
+            // Google Sign In Button
+            Button(
+                onClick = {
+                    viewModel.signInWithGoogle()
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(50.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Color.White),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Text(
+                    text = "تسجيل الدخول باستخدام Google",
+                    color = Color.Black,
                     fontWeight = FontWeight.Bold,
                     fontSize = 16.sp
                 )

@@ -33,12 +33,16 @@ object RetrofitClient {
             val newRequest = originalRequest.newBuilder()
                 .url(newUrl)
                 .addHeader("Authorization", "Bearer $apiKey")
+                .addHeader("Accept", "application/json")
                 .build()
             
             chain.proceed(newRequest)
         } else {
             // Standard API Key v3, let it pass as is
-            chain.proceed(originalRequest)
+            val newRequest = originalRequest.newBuilder()
+                .addHeader("Accept", "application/json")
+                .build()
+            chain.proceed(newRequest)
         }
     }
 

@@ -30,6 +30,6 @@ class DefaultAppContainer(private val context: Context) : AppContainer {
     }
     
     override val authRepository: AuthRepository by lazy {
-        AuthRepository()
+        AuthRepository(context)
     }
 }

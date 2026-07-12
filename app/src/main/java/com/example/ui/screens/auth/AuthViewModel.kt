@@ -32,7 +32,7 @@ class AuthViewModel(
             result.onSuccess {
                 _uiState.value = AuthUiState.Success
             }.onFailure {
-                _uiState.value = AuthUiState.Error(it.message ?: "Authentication failed")
+                _uiState.value = AuthUiState.Error(it.message ?: "فشل تسجيل الدخول")
             }
         }
     }
@@ -44,15 +44,27 @@ class AuthViewModel(
             result.onSuccess {
                 _uiState.value = AuthUiState.Success
             }.onFailure {
-                _uiState.value = AuthUiState.Error(it.message ?: "Registration failed")
+                _uiState.value = AuthUiState.Error(it.message ?: "فشل إنشاء الحساب")
             }
         }
     }
     
+    fun signInWithGoogle() {
+        viewModelScope.launch {
+            _uiState.value = AuthUiState.Loading
+            val result = authRepository.signInWithGoogle()
+            result.onSuccess {
+                _uiState.value = AuthUiState.Success
+            }.onFailure {
+                _uiState.value = AuthUiState.Error(it.message ?: "فشل تسجيل الدخول بحساب Google")
+            }
+        }
+    }
+
     fun signOut() {
         authRepository.signOut()
     }
-    
+
     fun resetState() {
         _uiState.value = AuthUiState.Idle
     }
