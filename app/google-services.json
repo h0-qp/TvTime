@@ -1,47 +1,48 @@
 {
-  "project_info": {
-    "project_number": "987873552497",
-    "project_id": "tvtime-9265c",
-    "storage_bucket": "tvtime-9265c.firebasestorage.app"
-  },
-  "client": [
-    {
-      "client_info": {
-        "mobilesdk_app_id": "1:987873552497:android:5003fcf43a28487b2353d0",
-        "android_client_info": {
-          "package_name": "com.aistudio.trackverse.xyzab"
-        }
-      },
-      "oauth_client": [
-        {
-          "client_id": "987873552497-5ck7rk5jspdertc1fjnb9tqsfq2oq6m8.apps.googleusercontent.com",
-          "client_type": 1,
-          "android_info": {
-            "package_name": "com.aistudio.trackverse.xyzab",
-            "certificate_hash": "fd3e4031b60235f32a409e4c89446d44f98c0a3e"
-          }
-        },
-        {
-          "client_id": "987873552497-oqdgq4qjt5uiq20sokjrnf701jjspkor.apps.googleusercontent.com",
-          "client_type": 3
-        }
-      ],
-      "api_key": [
-        {
-          "current_key": "AIzaSyC-yfevZTtLf8lOp9D1Orsai-G4QugPNRQ"
-        }
-      ],
-      "services": {
-        "appinvite_service": {
-          "other_platform_oauth_client": [
-            {
-              "client_id": "987873552497-oqdgq4qjt5uiq20sokjrnf701jjspkor.apps.googleusercontent.com",
-              "client_type": 3
-            }
-          ]
-        }
-      }
-    }
-  ],
-  "configuration_version": "1"
+    "project_info": {
+        "project_number": "987873552497",
+            "project_id": "tvtime-9265c",
+                "storage_bucket": "tvtime-9265c.firebasestorage.app"
+                  },
+                    "client": [
+                        {
+                              "client_info": {
+                                      "mobilesdk_app_id": "1:987873552497:android:5003fcf43a28487b2353d0",
+                                              "android_client_info": {
+                                                        "package_name": "com.aistudio.trackverse.xyzab"
+                                                                }
+                                                                      },
+                                                                            "oauth_client": [
+                                                                                    {
+                                                                                              "client_id": "987873552497-5ck7rk5jspdertc1fjnb9tqsfq2oq6m8.apps.googleusercontent.com",
+                                                                                                        "client_type": 1,
+                                                                                                                  "android_info": {
+                                                                                                                              "package_name": "com.aistudio.trackverse.xyzab",
+                                                                                                                                          "certificate_hash": "fd3e4031b60235f32a409e4c89446d44f98c0a3e"
+                                                                                                                                                    }
+                                                                                                                                                            },
+                                                                                                                                                                    {
+                                                                                                                                                                              "client_id": "987873552497-oqdgq4qjt5uiq20sokjrnf701jjspkor.apps.googleusercontent.com",
+                                                                                                                                                                                        "client_type": 3
+                                                                                                                                                                                                }
+                                                                                                                                                                                                      ],
+                                                                                                                                                                                                            "api_key": [
+                                                                                                                                                                                                                    {
+                                                                                                                                                                                                                              "current_key": "AIzaSyC-yfevZTtLf8lOp9D1Orsai-G4QugPNRQ"
+                                                                                                                                                                                                                                      }
+                                                                                                                                                                                                                                            ],
+                                                                                                                                                                                                                                                  "services": {
+                                                                                                                                                                                                                                                          "appinvite_service": {
+                                                                                                                                                                                                                                                                    "other_platform_oauth_client": [
+                                                                                                                                                                                                                                                                                {
+                                                                                                                                                                                                                                                                                              "client_id": "987873552497-oqdgq4qjt5uiq20sokjrnf701jjspkor.apps.googleusercontent.com",
+                                                                                                                                                                                                                                                                                                            "client_type": 3
+                                                                                                                                                                                                                                                                                                                        }
+                                                                                                                                                                                                                                                                                                                                  ]
+                                                                                                                                                                                                                                                                                                                                          }
+                                                                                                                                                                                                                                                                                                                                                }
+                                                                                                                                                                                                                                                                                                                                                    }
+                                                                                                                                                                                                                                                                                                                                                      ],
+                                                                                                                                                                                                                                                                                                                                                        "configuration_version": "1"
+                                                                                                                                                                                                                                                                                                                                                        }
 }
