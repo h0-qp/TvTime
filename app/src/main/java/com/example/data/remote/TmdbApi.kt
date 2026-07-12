@@ -2,6 +2,7 @@ package com.example.data.remote
 
 import retrofit2.http.GET
 import retrofit2.http.Query
+import retrofit2.http.Path
 
 interface TmdbApi {
     @GET("trending/tv/day")
@@ -23,19 +24,28 @@ interface TmdbApi {
         @Query("language") language: String = "ar-AE",
         @Query("page") page: Int = 1
     ): MediaResponse
+
     @GET("tv/{tv_id}")
     suspend fun getTvDetails(
-        @retrofit2.http.Path("tv_id") tvId: Int,
+        @Path("tv_id") tvId: Int,
         @Query("api_key") apiKey: String,
         @Query("language") language: String = "ar-AE"
     ): MediaItem
 
     @GET("movie/{movie_id}")
     suspend fun getMovieDetails(
-        @retrofit2.http.Path("movie_id") movieId: Int,
+        @Path("movie_id") movieId: Int,
         @Query("api_key") apiKey: String,
         @Query("language") language: String = "ar-AE"
     ): MediaItem
+    
+    @GET("tv/{tv_id}/season/{season_number}")
+    suspend fun getSeasonDetails(
+        @Path("tv_id") tvId: Int,
+        @Path("season_number") seasonNumber: Int,
+        @Query("api_key") apiKey: String,
+        @Query("language") language: String = "ar-AE"
+    ): SeasonDetails
 }
 
 data class MediaResponse(
@@ -54,5 +64,32 @@ data class MediaItem(
     val backdrop_path: String?,
     val media_type: String?,
     val first_air_date: String?,
-    val release_date: String?
+    val release_date: String?,
+    val seasons: List<Season>? = null,
+    val number_of_seasons: Int? = null,
+    val number_of_episodes: Int? = null
+)
+
+data class Season(
+    val id: Int,
+    val name: String,
+    val season_number: Int,
+    val episode_count: Int,
+    val poster_path: String?
+)
+
+data class Episode(
+    val id: Int,
+    val name: String,
+    val episode_number: Int,
+    val season_number: Int,
+    val overview: String,
+    val still_path: String?
+)
+
+data class SeasonDetails(
+    val _id: String,
+    val id: Int,
+    val name: String,
+    val episodes: List<Episode>
 )

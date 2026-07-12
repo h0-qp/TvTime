@@ -1,53 +1,33 @@
-package com.example.ui.screens.tvshows
+import re
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.runtime.*
-import com.example.data.firebase.FirestoreMediaItem
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewmodel.compose.viewModel
-import coil.compose.AsyncImage
-import com.example.data.remote.MediaItem
-import com.example.data.repository.MediaRepository
-import com.example.ui.theme.DarkGrey
-import com.example.ui.theme.GoldYellow
-import com.example.ui.theme.TextPrimary
-import com.example.ui.theme.TextSecondary
-import com.example.ui.theme.TrueBlack
+with open('app/src/main/java/com/example/ui/screens/tvshows/TvShowsScreen.kt', 'r') as f:
+    content = f.read()
 
-@Composable
-fun TvShowsScreen(
-    repository: MediaRepository,
-    firestoreRepository: com.example.data.firebase.FirestoreRepository,
-    onNavigateToDetails: (String, Int) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val viewModel: TvShowsViewModel = viewModel(
-        factory = TvShowsViewModelFactory(repository, firestoreRepository)
-    )
-    val uiState by viewModel.uiState.collectAsState()
+content = content.replace('import androidx.compose.runtime.Composable', 'import androidx.compose.runtime.*\nimport com.example.data.firebase.FirestoreMediaItem')
+
+content = content.replace(
+'''    val uiState by viewModel.uiState.collectAsState()
+
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .background(TrueBlack)
+    ) {
+        // Top Tabs
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.SpaceEvenly
+        ) {
+            Text("المرتقبة", color = TextSecondary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text("قائمة المشاهدة", color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                Spacer(modifier = Modifier.height(6.dp))
+                Box(modifier = Modifier.height(3.dp).width(50.dp).background(GoldYellow, RoundedCornerShape(1.5.dp)))
+            }
+        }''',
+'''    val uiState by viewModel.uiState.collectAsState()
     var selectedTab by remember { mutableStateOf(1) } // 0 = Upcoming, 1 = Watchlist
 
     Column(
@@ -80,21 +60,25 @@ fun TvShowsScreen(
                     Spacer(modifier = Modifier.height(3.dp))
                 }
             }
-        }
+        }'''
+)
 
-        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            when (val state = uiState) {
-                is TvShowsUiState.Loading -> {
-                    CircularProgressIndicator(color = GoldYellow)
-                }
-                is TvShowsUiState.Error -> {
-                    Text(
-                        text = state.message,
-                        color = MaterialTheme.colorScheme.error,
-                        modifier = Modifier.padding(16.dp)
-                    )
-                }
-                is TvShowsUiState.Success -> {
+content = content.replace(
+'''                is TvShowsUiState.Success -> {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(bottom = 16.dp)
+                    ) {
+                        item {
+                            SectionHeader("لم يتم مشاهدته منذ فترة")
+                        }
+                        
+                        items(state.trendingShows) { show ->
+                            WatchlistCard(show, onNavigateToDetails)
+                        }
+                    }
+                }''',
+'''                is TvShowsUiState.Success -> {
                     if (selectedTab == 1) {
                         if (state.watchlist.isEmpty()) {
                             Text("قائمتك فارغة. ابحث عن مسلسلات لإضافتها!", color = TextSecondary)
@@ -118,7 +102,7 @@ fun TvShowsScreen(
                             contentPadding = PaddingValues(bottom = 16.dp)
                         ) {
                             item {
-                                SectionHeader("مسلسلات رائجة")
+                                SectionHeader("أفلام ومسلسلات رائجة")
                             }
                             
                             items(state.trendingShows) { show ->
@@ -126,31 +110,13 @@ fun TvShowsScreen(
                             }
                         }
                     }
-                }
-            }
-        }
-    }
-}
+                }'''
+)
 
-@Composable
-fun SectionHeader(title: String) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 12.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Box(
-            modifier = Modifier
-                .background(Color(0xFF333333), RoundedCornerShape(16.dp))
-                .padding(horizontal = 16.dp, vertical = 6.dp)
-        ) {
-            Text(title, color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-        }
-    }
-}
-
-@Composable
+content = content.replace(
+'''@Composable
+fun WatchlistCard(show: MediaItem, onNavigateToDetails: (String, Int) -> Unit) {''',
+'''@Composable
 fun TrendingCard(show: MediaItem, onNavigateToDetails: (String, Int) -> Unit) {
     Row(
         modifier = Modifier
@@ -204,43 +170,9 @@ fun TrendingCard(show: MediaItem, onNavigateToDetails: (String, Int) -> Unit) {
 }
 
 @Composable
-fun WatchlistCard(show: FirestoreMediaItem, onNavigateToDetails: (String, Int) -> Unit) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 6.dp)
-            .background(DarkGrey, RoundedCornerShape(12.dp))
-            .clickable { onNavigateToDetails("tv", show.id) }
-            .padding(12.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        // Details
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = show.title,
-                color = TextPrimary,
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Bold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("تمت المشاهدة: ${show.watchedEpisodes.size} حلقة", color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-            }
-        }
-        
-        Spacer(modifier = Modifier.width(12.dp))
-        
-        // Image
-        AsyncImage(
-            model = "https://image.tmdb.org/t/p/w500${show.posterPath}",
-            contentDescription = null,
-            contentScale = ContentScale.Crop,
-            modifier = Modifier
-                .size(width = 64.dp, height = 96.dp)
-                .clip(RoundedCornerShape(8.dp))
-                .background(Color.DarkGray)
-        )
-    }
-}
+fun WatchlistCard(show: FirestoreMediaItem, onNavigateToDetails: (String, Int) -> Unit) {'''
+)
+
+with open('app/src/main/java/com/example/ui/screens/tvshows/TvShowsScreen.kt', 'w') as f:
+    f.write(content)
+

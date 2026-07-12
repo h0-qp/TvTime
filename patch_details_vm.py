@@ -1,56 +1,33 @@
-package com.example.ui.screens.details
+import re
 
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.ViewModelProvider
-import androidx.lifecycle.viewModelScope
-import com.example.BuildConfig
-import com.example.data.firebase.FirestoreMediaItem
-import com.example.data.firebase.FirestoreRepository
-import com.example.data.remote.MediaItem
-import com.example.data.repository.MediaRepository
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.launch
+with open('app/src/main/java/com/example/ui/screens/details/DetailsViewModel.kt', 'r') as f:
+    content = f.read()
 
-sealed class DetailsUiState {
-    object Loading : DetailsUiState()
-    data class Success(
+content = content.replace(
+'''    data class Success(val mediaItem: MediaItem, val isInWatchlist: Boolean) : DetailsUiState()''',
+'''    data class Success(
         val mediaItem: MediaItem,
         val isInWatchlist: Boolean,
         val firestoreItem: FirestoreMediaItem? = null,
         val selectedSeasonDetails: com.example.data.remote.SeasonDetails? = null,
         val selectedSeasonNumber: Int? = null,
         val isLoadingSeason: Boolean = false
-    ) : DetailsUiState()
-    data class Error(val message: String) : DetailsUiState()
-}
+    ) : DetailsUiState()'''
+)
 
-class DetailsViewModel(
-    private val repository: MediaRepository,
-    private val firestoreRepository: FirestoreRepository,
-    private val mediaId: Int,
-    private val mediaType: String
-) : ViewModel() {
+content = content.replace(
+'''            val result = repository.getMediaDetails(apiKey, mediaId, mediaType)
 
-    private val _uiState = MutableStateFlow<DetailsUiState>(DetailsUiState.Loading)
-    val uiState: StateFlow<DetailsUiState> = _uiState
-
-    init {
-        fetchDetails()
-    }
-
-    private fun fetchDetails() {
-        viewModelScope.launch {
-            _uiState.value = DetailsUiState.Loading
-            val apiKey = BuildConfig.TMDB_API_KEY
-            if (apiKey.isEmpty() || apiKey == "MY_TMDB_API_KEY") {
-                _uiState.value = DetailsUiState.Error("Missing TMDB API Key. Please add it to Secrets.")
-                return@launch
-            }
-
-            // Fetch Details
-            val result = repository.getMediaDetails(apiKey, mediaId, mediaType)
+            firestoreRepository.observeUserMedia().collectLatest { mediaList ->
+                val isInWatchlist = mediaList.any { it.id == mediaId }
+                
+                result.onSuccess { response ->
+                    _uiState.value = DetailsUiState.Success(response, isInWatchlist)
+                }.onFailure { exception ->
+                    _uiState.value = DetailsUiState.Error(exception.message ?: "Unknown error occurred")
+                }
+            }''',
+'''            val result = repository.getMediaDetails(apiKey, mediaId, mediaType)
 
             firestoreRepository.observeUserMedia().collectLatest { mediaList ->
                 val firestoreItem = mediaList.find { it.id == mediaId }
@@ -78,11 +55,11 @@ class DetailsViewModel(
                 }.onFailure { exception ->
                     _uiState.value = DetailsUiState.Error(exception.message ?: "Unknown error occurred")
                 }
-            }
-        }
-    }
+            }''')
 
-    private fun fetchSeasonDetails(seasonNumber: Int, apiKey: String) {
+content = content.replace(
+'''    fun toggleWatchlist() {''',
+'''    private fun fetchSeasonDetails(seasonNumber: Int, apiKey: String) {
         viewModelScope.launch {
             val currentState = _uiState.value
             if (currentState is DetailsUiState.Success) {
@@ -135,41 +112,9 @@ class DetailsViewModel(
         }
     }
 
-    fun toggleWatchlist() {
-        val currentState = _uiState.value
-        if (currentState is DetailsUiState.Success) {
-            val item = currentState.mediaItem
-            viewModelScope.launch {
-                if (currentState.isInWatchlist) {
-                    firestoreRepository.removeMedia(item.id)
-                } else {
-                    firestoreRepository.addOrUpdateMedia(
-                        FirestoreMediaItem(
-                            id = item.id,
-                            title = item.name ?: item.title ?: "Unknown",
-                            posterPath = item.poster_path,
-                            mediaType = mediaType,
-                            isWatched = false,
-                            addedAt = System.currentTimeMillis()
-                        )
-                    )
-                }
-            }
-        }
-    }
-}
+    fun toggleWatchlist() {'''
+)
 
-class DetailsViewModelFactory(
-    private val repository: MediaRepository,
-    private val firestoreRepository: FirestoreRepository,
-    private val mediaId: Int,
-    private val mediaType: String
-) : ViewModelProvider.Factory {
-    override fun <T : ViewModel> create(modelClass: Class<T>): T {
-        if (modelClass.isAssignableFrom(DetailsViewModel::class.java)) {
-            @Suppress("UNCHECKED_CAST")
-            return DetailsViewModel(repository, firestoreRepository, mediaId, mediaType) as T
-        }
-        throw IllegalArgumentException("Unknown ViewModel class")
-    }
-}
+with open('app/src/main/java/com/example/ui/screens/details/DetailsViewModel.kt', 'w') as f:
+    f.write(content)
+

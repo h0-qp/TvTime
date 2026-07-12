@@ -23,6 +23,14 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.foundation.Image
 import androidx.compose.ui.layout.ContentScale
 
+import androidx.compose.ui.platform.LocalContext
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions
+import com.google.android.gms.common.api.ApiException
+import android.util.Log
+
 @Composable
 fun AuthScreen(
     authRepository: AuthRepository,
@@ -31,10 +39,31 @@ fun AuthScreen(
 ) {
     val viewModel: AuthViewModel = viewModel(factory = AuthViewModelFactory(authRepository))
     val uiState by viewModel.uiState.collectAsState()
+    val context = LocalContext.current
 
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var isSignUpMode by remember { mutableStateOf(false) }
+
+    val googleSignInLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == android.app.Activity.RESULT_OK) {
+            val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
+            try {
+                val account = task.getResult(ApiException::class.java)
+                account?.idToken?.let { idToken ->
+                    viewModel.signInWithGoogle(idToken)
+                } ?: run {
+                    viewModel.setError("فشل الحصول على توكن الحساب")
+                }
+            } catch (e: ApiException) {
+                viewModel.setError("إلغاء أو فشل تسجيل الدخول: ${e.statusCode}")
+            }
+        } else {
+            viewModel.resetState()
+        }
+    }
 
     LaunchedEffect(uiState) {
         if (uiState is AuthUiState.Success) {
@@ -134,7 +163,14 @@ fun AuthScreen(
             // Google Sign In Button
             Button(
                 onClick = {
-                    viewModel.signInWithGoogle()
+                    val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+                        .requestIdToken("987873552497-oqdgq4qjt5uiq20sokjrnf701jjspkor.apps.googleusercontent.com")
+                        .requestEmail()
+                        .build()
+                    val googleSignInClient = GoogleSignIn.getClient(context, gso)
+                    googleSignInClient.signOut().addOnCompleteListener {
+                        googleSignInLauncher.launch(googleSignInClient.signInIntent)
+                    }
                 },
                 modifier = Modifier
                     .fillMaxWidth()

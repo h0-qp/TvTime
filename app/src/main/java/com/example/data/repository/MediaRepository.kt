@@ -53,6 +53,15 @@ class MediaRepository(
         }
     }
 
+        suspend fun getSeasonDetails(apiKey: String, tvId: Int, seasonNumber: Int): Result<com.example.data.remote.SeasonDetails> {
+        return try {
+            val response = tmdbApi.getSeasonDetails(tvId, seasonNumber, apiKey)
+            Result.success(response)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     suspend fun getMediaDetails(apiKey: String, id: Int, mediaType: String): Result<com.example.data.remote.MediaItem> {
         return try {
             val response = if (mediaType == "tv") {

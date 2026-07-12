@@ -1,19 +1,19 @@
 package com.example.data
-
 import android.content.Context
 import com.example.data.local.AppDatabase
 import com.example.data.local.MediaDao
 import com.example.data.remote.RetrofitClient
 import com.example.data.remote.TmdbApi
 import com.example.data.repository.MediaRepository
-
 import com.example.data.firebase.AuthRepository
+import com.example.data.firebase.FirestoreRepository
 
 interface AppContainer {
     val tmdbApi: TmdbApi
     val mediaDao: MediaDao
     val mediaRepository: MediaRepository
     val authRepository: AuthRepository
+    val firestoreRepository: FirestoreRepository
 }
 
 class DefaultAppContainer(private val context: Context) : AppContainer {
@@ -30,6 +30,10 @@ class DefaultAppContainer(private val context: Context) : AppContainer {
     }
     
     override val authRepository: AuthRepository by lazy {
-        AuthRepository(context)
+        AuthRepository()
+    }
+
+    override val firestoreRepository: FirestoreRepository by lazy {
+        FirestoreRepository()
     }
 }

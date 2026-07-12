@@ -128,6 +128,7 @@ fun TrackVerseApp(appContainer: com.example.data.AppContainer) {
             composable(Screen.TvShows.route) { 
                 TvShowsScreen(
                     repository = appContainer.mediaRepository,
+                    firestoreRepository = appContainer.firestoreRepository,
                     onNavigateToDetails = { mediaType, mediaId ->
                         navController.navigate("details/$mediaType/$mediaId")
                     }
@@ -136,6 +137,7 @@ fun TrackVerseApp(appContainer: com.example.data.AppContainer) {
             composable(Screen.Movies.route) { 
                 MoviesScreen(
                     repository = appContainer.mediaRepository,
+                    firestoreRepository = appContainer.firestoreRepository,
                     onNavigateToDetails = { mediaType, mediaId ->
                         navController.navigate("details/$mediaType/$mediaId")
                     }
@@ -152,6 +154,7 @@ fun TrackVerseApp(appContainer: com.example.data.AppContainer) {
             composable(Screen.Profile.route) { 
                 com.example.ui.screens.profile.ProfileScreen(
                     authRepository = appContainer.authRepository,
+                    firestoreRepository = appContainer.firestoreRepository,
                     onSignOut = {
                         navController.navigate("auth") {
                             popUpTo(0) { inclusive = true }
@@ -170,6 +173,7 @@ fun TrackVerseApp(appContainer: com.example.data.AppContainer) {
                 val mediaId = backStackEntry.arguments?.getInt("mediaId") ?: 0
                 com.example.ui.screens.details.DetailsScreen(
                     repository = appContainer.mediaRepository,
+                    firestoreRepository = appContainer.firestoreRepository,
                     mediaId = mediaId,
                     mediaType = mediaType,
                     onNavigateBack = { navController.popBackStack() }

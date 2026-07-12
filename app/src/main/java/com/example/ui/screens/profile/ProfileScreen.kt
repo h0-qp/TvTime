@@ -11,6 +11,8 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -28,12 +30,19 @@ import com.example.ui.theme.TrueBlack
 @Composable
 fun ProfileScreen(
     authRepository: AuthRepository,
+    firestoreRepository: com.example.data.firebase.FirestoreRepository,
     onSignOut: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val currentUser = authRepository.currentUser
     val email = currentUser?.email ?: "guest@trackverse.com"
     val displayInitial = email.firstOrNull()?.uppercase() ?: "T"
+    
+    val userMedia by firestoreRepository.observeUserMedia().collectAsState(initial = emptyList())
+    
+    val tvShowsCount = userMedia.count { it.mediaType == "tv" }
+    val moviesCount = userMedia.count { it.mediaType == "movie" }
+    val watchlistCount = userMedia.size
 
     Column(
         modifier = modifier
@@ -51,9 +60,9 @@ fun ProfileScreen(
             Icon(Icons.Default.Settings, contentDescription = "Settings", tint = TextSecondary)
             Text("الملف الشخصي", color = TextPrimary, fontSize = 18.sp, fontWeight = FontWeight.Bold)
         }
-
+        
         Spacer(modifier = Modifier.height(24.dp))
-
+        
         // Profile Info
         Column(
             modifier = Modifier.fillMaxWidth(),
@@ -68,14 +77,16 @@ fun ProfileScreen(
             ) {
                 Text(displayInitial, color = TrueBlack, fontSize = 48.sp, fontWeight = FontWeight.Black)
             }
+            
             Spacer(modifier = Modifier.height(16.dp))
+            
             Text(email.substringBefore("@"), color = TextPrimary, fontSize = 24.sp, fontWeight = FontWeight.Bold)
             Spacer(modifier = Modifier.height(8.dp))
             Text(email, color = TextSecondary, fontSize = 14.sp)
         }
-
+        
         Spacer(modifier = Modifier.height(32.dp))
-
+        
         // Stats
         Row(
             modifier = Modifier
@@ -83,13 +94,13 @@ fun ProfileScreen(
                 .padding(horizontal = 24.dp),
             horizontalArrangement = Arrangement.SpaceEvenly
         ) {
-            StatItem("مسلسلات", "0")
-            StatItem("أفلام", "0")
-            StatItem("قائمة المشاهدة", "0")
+            StatItem("مسلسلات", tvShowsCount.toString())
+            StatItem("أفلام", moviesCount.toString())
+            StatItem("في القائمة", watchlistCount.toString())
         }
-
+        
         Spacer(modifier = Modifier.height(32.dp))
-
+        
         // Settings / Options placeholder
         Column(
             modifier = Modifier
@@ -104,6 +115,7 @@ fun ProfileScreen(
             Spacer(modifier = Modifier.height(16.dp))
             OptionItem("الإشعارات")
             Spacer(modifier = Modifier.height(16.dp))
+            
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
