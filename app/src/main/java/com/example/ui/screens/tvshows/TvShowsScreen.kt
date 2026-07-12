@@ -117,12 +117,30 @@ fun TvShowsScreen(
                             modifier = Modifier.fillMaxSize(),
                             contentPadding = PaddingValues(bottom = 16.dp)
                         ) {
-                            item {
-                                SectionHeader("مسلسلات مرتقبة")
-                            }
-                            
-                            items(state.trendingShows) { show ->
-                                TrendingCard(show, onNavigateToDetails)
+                            if (state.upcomingEpisodes.isEmpty()) {
+                                item {
+                                    Box(modifier = Modifier.fillParentMaxSize(), contentAlignment = Alignment.Center) {
+                                        Text("لا توجد مسلسلات مرتقبة", color = TextSecondary)
+                                    }
+                                }
+                            } else {
+                                val grouped = state.upcomingEpisodes.groupBy { 
+                                    when (it.daysDifference) {
+                                        -1L -> "أمس"
+                                        0L -> "اليوم"
+                                        1L -> "غدًا"
+                                        else -> if (it.daysDifference > 1) "بعد ${it.daysDifference} أيام" else "قبل ${-it.daysDifference} أيام"
+                                    }
+                                }
+                                
+                                grouped.forEach { (header, episodes) ->
+                                    item {
+                                        SectionHeader(header)
+                                    }
+                                    items(episodes) { epData ->
+                                        UpcomingEpisodeCard(epData, onNavigateToDetails)
+                                    }
+                                }
                             }
                         }
                     }
@@ -239,6 +257,86 @@ fun WatchlistCard(show: FirestoreMediaItem, onNavigateToDetails: (String, Int) -
             contentScale = ContentScale.Crop,
             modifier = Modifier
                 .size(width = 64.dp, height = 96.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .background(Color.DarkGray)
+        )
+    }
+}
+
+@Composable
+fun UpcomingEpisodeCard(epData: UpcomingEpisodeData, onNavigateToDetails: (String, Int) -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 6.dp)
+            .background(DarkGrey, RoundedCornerShape(12.dp))
+            .clickable { onNavigateToDetails("tv", epData.show.id) }
+            .padding(12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // Checkbox
+        Box(
+            modifier = Modifier
+                .size(40.dp)
+                .background(Color.White, CircleShape)
+                .padding(8.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(Icons.Filled.Check, contentDescription = "Watched", tint = Color.LightGray)
+        }
+        
+        Spacer(modifier = Modifier.width(16.dp))
+        
+        // Details
+        Column(
+            modifier = Modifier.weight(1f),
+            horizontalAlignment = Alignment.End
+        ) {
+            // Show name pill
+            Box(
+                modifier = Modifier
+                    .border(1.dp, Color.White, RoundedCornerShape(16.dp))
+                    .padding(horizontal = 8.dp, vertical = 4.dp)
+            ) {
+                Text("< ${epData.show.title.uppercase()}", color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = "S${epData.episodeToAir.season_number.toString().padStart(2, '0')} | E${epData.episodeToAir.episode_number.toString().padStart(2, '0')}",
+                color = Color.White,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = epData.episodeToAir.name,
+                color = Color.LightGray,
+                fontSize = 14.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Box(
+                modifier = Modifier
+                    .background(GoldYellow, RoundedCornerShape(4.dp))
+                    .padding(horizontal = 6.dp, vertical = 2.dp)
+            ) {
+                Text(if (epData.daysDifference <= 0) "مُذاعة" else "جديد", color = TrueBlack, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+            }
+        }
+        
+        Spacer(modifier = Modifier.width(16.dp))
+        
+        // Image
+        val imageUrl = epData.episodeToAir.still_path?.let { "https://image.tmdb.org/t/p/w500$it" } 
+            ?: epData.showDetails.poster_path?.let { "https://image.tmdb.org/t/p/w500$it" }
+        
+        AsyncImage(
+            model = imageUrl,
+            contentDescription = null,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier
+                .size(width = 100.dp, height = 100.dp)
                 .clip(RoundedCornerShape(8.dp))
                 .background(Color.DarkGray)
         )

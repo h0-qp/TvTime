@@ -1,4 +1,9 @@
-package com.example.ui.screens.tvshows
+import re
+
+with open('app/src/main/java/com/example/ui/screens/tvshows/TvShowsViewModel.kt', 'r') as f:
+    content = f.read()
+
+replacement = '''package com.example.ui.screens.tvshows
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -120,3 +125,8 @@ class TvShowsViewModelFactory(
         throw IllegalArgumentException("Unknown ViewModel class")
     }
 }
+'''
+
+with open('app/src/main/java/com/example/ui/screens/tvshows/TvShowsViewModel.kt', 'w') as f:
+    f.write(replacement)
+

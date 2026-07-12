@@ -79,7 +79,20 @@ data class MediaItem(
     val release_date: String?,
     val seasons: List<Season>? = null,
     val number_of_seasons: Int? = null,
-    val number_of_episodes: Int? = null
+    val number_of_episodes: Int? = null,
+    val next_episode_to_air: EpisodeToAir? = null,
+    val last_episode_to_air: EpisodeToAir? = null,
+    val status: String? = null
+)
+
+data class EpisodeToAir(
+    val id: Int,
+    val name: String,
+    val overview: String,
+    val air_date: String,
+    val episode_number: Int,
+    val season_number: Int,
+    val still_path: String?
 )
 
 data class Season(
