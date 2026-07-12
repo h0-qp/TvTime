@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "987873552497",
+    "project_id": "tvtime-9265c",
+    "storage_bucket": "tvtime-9265c.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:987873552497:android:5003fcf43a28487b2353d0",
+        "android_client_info": {
+          "package_name": "com.aistudio.trackverse.xyzab"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC-yfevZTtLf8lOp9D1Orsai-G4QugPNRQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

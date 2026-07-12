@@ -1,0 +1,146 @@
+package com.example.ui.screens.auth
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.data.firebase.AuthRepository
+import com.example.ui.theme.DarkGrey
+import com.example.ui.theme.GoldYellow
+import com.example.ui.theme.TextPrimary
+import com.example.ui.theme.TextSecondary
+import com.example.ui.theme.TrueBlack
+
+@Composable
+fun AuthScreen(
+    authRepository: AuthRepository,
+    onAuthSuccess: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val viewModel: AuthViewModel = viewModel(factory = AuthViewModelFactory(authRepository))
+    val uiState by viewModel.uiState.collectAsState()
+    
+    var email by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
+    var isSignUpMode by remember { mutableStateOf(false) }
+
+    LaunchedEffect(uiState) {
+        if (uiState is AuthUiState.Success) {
+            onAuthSuccess()
+            viewModel.resetState()
+        }
+    }
+
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .background(TrueBlack)
+            .padding(24.dp),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        // App Logo
+        Box(
+            modifier = Modifier
+                .size(80.dp)
+                .background(GoldYellow, RoundedCornerShape(20.dp)),
+            contentAlignment = Alignment.Center
+        ) {
+            Text("T", color = TrueBlack, fontSize = 40.sp, fontWeight = FontWeight.Black)
+        }
+        
+        Spacer(modifier = Modifier.height(16.dp))
+        Text(
+            text = "TrackVerse",
+            color = TextPrimary,
+            fontSize = 28.sp,
+            fontWeight = FontWeight.Bold
+        )
+        Spacer(modifier = Modifier.height(32.dp))
+
+        // Input Fields
+        OutlinedTextField(
+            value = email,
+            onValueChange = { email = it },
+            label = { Text("البريد الإلكتروني", color = TextSecondary) },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = GoldYellow,
+                unfocusedBorderColor = DarkGrey,
+                focusedTextColor = TextPrimary,
+                unfocusedTextColor = TextPrimary
+            )
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        OutlinedTextField(
+            value = password,
+            onValueChange = { password = it },
+            label = { Text("كلمة المرور", color = TextSecondary) },
+            singleLine = true,
+            visualTransformation = PasswordVisualTransformation(),
+            modifier = Modifier.fillMaxWidth(),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = GoldYellow,
+                unfocusedBorderColor = DarkGrey,
+                focusedTextColor = TextPrimary,
+                unfocusedTextColor = TextPrimary
+            )
+        )
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        if (uiState is AuthUiState.Loading) {
+            CircularProgressIndicator(color = GoldYellow)
+        } else {
+            Button(
+                onClick = {
+                    if (email.isNotBlank() && password.isNotBlank()) {
+                        if (isSignUpMode) {
+                            viewModel.signUp(email, password)
+                        } else {
+                            viewModel.signIn(email, password)
+                        }
+                    }
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(50.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = GoldYellow),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Text(
+                    text = if (isSignUpMode) "إنشاء حساب" else "تسجيل الدخول",
+                    color = TrueBlack,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 16.sp
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+        TextButton(onClick = { isSignUpMode = !isSignUpMode }) {
+            Text(
+                text = if (isSignUpMode) "لديك حساب؟ سجل الدخول" else "ليس لديك حساب؟ أنشئ حساباً",
+                color = TextSecondary
+            )
+        }
+
+        if (uiState is AuthUiState.Error) {
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(
+                text = (uiState as AuthUiState.Error).message,
+                color = MaterialTheme.colorScheme.error,
+                fontSize = 14.sp
+            )
+        }
+    }
+}

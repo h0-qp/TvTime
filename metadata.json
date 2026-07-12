@@ -1,0 +1,6 @@
+{
+  "name": "TrackVerse",
+  "description": "TV Shows and Movies tracker with Dark Mode and TMDB integration.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

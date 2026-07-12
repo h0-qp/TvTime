@@ -1,0 +1,68 @@
+package com.example.data.repository
+
+import com.example.data.local.LocalMediaItem
+import com.example.data.local.MediaDao
+import com.example.data.remote.MediaResponse
+import com.example.data.remote.TmdbApi
+import kotlinx.coroutines.flow.Flow
+
+class MediaRepository(
+    private val tmdbApi: TmdbApi,
+    private val mediaDao: MediaDao
+) {
+    fun getLocalMediaByType(mediaType: String): Flow<List<LocalMediaItem>> {
+        return mediaDao.getMediaItemsByType(mediaType)
+    }
+
+    suspend fun insertLocalMedia(item: LocalMediaItem) {
+        mediaDao.insertMediaItem(item)
+    }
+
+    suspend fun deleteLocalMedia(id: Int) {
+        mediaDao.deleteMediaItem(id)
+    }
+
+    suspend fun updateLocalMediaWatchedStatus(id: Int, isWatched: Boolean) {
+        mediaDao.updateWatchedStatus(id, isWatched)
+    }
+
+    suspend fun getTrendingTvShows(apiKey: String): Result<MediaResponse> {
+        return try {
+            val response = tmdbApi.getTrendingTvShows(apiKey)
+            Result.success(response)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun getTrendingMovies(apiKey: String): Result<MediaResponse> {
+        return try {
+            val response = tmdbApi.getTrendingMovies(apiKey)
+            Result.success(response)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun searchMulti(apiKey: String, query: String): Result<MediaResponse> {
+        return try {
+            val response = tmdbApi.searchMulti(apiKey, query)
+            Result.success(response)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun getMediaDetails(apiKey: String, id: Int, mediaType: String): Result<com.example.data.remote.MediaItem> {
+        return try {
+            val response = if (mediaType == "tv") {
+                tmdbApi.getTvDetails(id, apiKey)
+            } else {
+                tmdbApi.getMovieDetails(id, apiKey)
+            }
+            Result.success(response)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+}
