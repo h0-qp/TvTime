@@ -17,6 +17,18 @@ interface TmdbApi {
         @Query("language") language: String = "ar-AE"
     ): MediaResponse
 
+    @GET("movie/upcoming")
+    suspend fun getUpcomingMovies(
+        @Query("api_key") apiKey: String,
+        @Query("language") language: String = "ar-AE"
+    ): MediaResponse
+
+    @GET("tv/on_the_air")
+    suspend fun getUpcomingTvShows(
+        @Query("api_key") apiKey: String,
+        @Query("language") language: String = "ar-AE"
+    ): MediaResponse
+
     @GET("search/multi")
     suspend fun searchMulti(
         @Query("api_key") apiKey: String,

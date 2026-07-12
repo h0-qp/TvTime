@@ -49,6 +49,18 @@ class AuthViewModel(
         }
     }
     
+    fun signInAnonymously() {
+        viewModelScope.launch {
+            _uiState.value = AuthUiState.Loading
+            val result = authRepository.signInAnonymously()
+            result.onSuccess {
+                _uiState.value = AuthUiState.Success
+            }.onFailure {
+                _uiState.value = AuthUiState.Error(it.message ?: "فشل المتابعة كضيف")
+            }
+        }
+    }
+
     fun signInWithGoogle(idToken: String) {
         viewModelScope.launch {
             _uiState.value = AuthUiState.Loading

@@ -44,6 +44,24 @@ class MediaRepository(
         }
     }
 
+    suspend fun getUpcomingMovies(apiKey: String): Result<MediaResponse> {
+        return try {
+            val response = tmdbApi.getUpcomingMovies(apiKey)
+            Result.success(response)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun getUpcomingTvShows(apiKey: String): Result<MediaResponse> {
+        return try {
+            val response = tmdbApi.getUpcomingTvShows(apiKey)
+            Result.success(response)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     suspend fun searchMulti(apiKey: String, query: String): Result<MediaResponse> {
         return try {
             val response = tmdbApi.searchMulti(apiKey, query)

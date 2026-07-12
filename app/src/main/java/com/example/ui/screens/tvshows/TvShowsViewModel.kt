@@ -41,7 +41,7 @@ class TvShowsViewModel(
             }
 
             // First get TMDB items
-            val result = repository.getTrendingTvShows(apiKey)
+            val result = repository.getUpcomingTvShows(apiKey)
 
             // Then observe Firestore
             firestoreRepository.observeUserMedia().collectLatest { mediaList ->

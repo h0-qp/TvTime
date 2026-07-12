@@ -40,7 +40,7 @@ class MoviesViewModel(
             }
             
             // First get TMDB items
-            val result = repository.getTrendingMovies(apiKey)
+            val result = repository.getUpcomingMovies(apiKey)
             
             // Then observe Firestore
             firestoreRepository.observeUserMedia().collectLatest { mediaList ->

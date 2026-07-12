@@ -118,7 +118,7 @@ fun MoviesScreen(
                             contentPadding = PaddingValues(bottom = 16.dp)
                         ) {
                             item {
-                                SectionHeader("أفلام رائجة")
+                                SectionHeader("أفلام مرتقبة")
                             }
                             
                             items(state.trendingMovies) { movie ->

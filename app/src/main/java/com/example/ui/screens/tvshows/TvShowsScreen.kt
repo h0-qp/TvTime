@@ -118,7 +118,7 @@ fun TvShowsScreen(
                             contentPadding = PaddingValues(bottom = 16.dp)
                         ) {
                             item {
-                                SectionHeader("مسلسلات رائجة")
+                                SectionHeader("مسلسلات مرتقبة")
                             }
                             
                             items(state.trendingShows) { show ->
