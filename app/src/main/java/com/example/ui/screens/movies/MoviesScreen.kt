@@ -180,7 +180,7 @@ fun TrendingMovieCard(movie: MediaItem, onNavigateToDetails: (String, Int) -> Un
             )
             Spacer(modifier = Modifier.height(4.dp))
             Text(
-                text = movie.overview.ifEmpty { "لا يوجد وصف متاح..." },
+                text = movie.overview.orEmpty().ifEmpty { "لا يوجد وصف متاح..." },
                 color = TextSecondary,
                 fontSize = 12.sp,
                 maxLines = 2,

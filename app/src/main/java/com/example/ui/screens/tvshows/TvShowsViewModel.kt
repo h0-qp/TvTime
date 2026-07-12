@@ -48,6 +48,23 @@ class TvShowsViewModel(
         fetchData()
     }
 
+
+    fun toggleEpisodeWatched(showId: Int, episodeKey: String) {
+        viewModelScope.launch {
+            val currentState = _uiState.value
+            if (currentState is TvShowsUiState.Success) {
+                val show = currentState.watchlist.find { it.id == showId } ?: return@launch
+                val newWatched = show.watchedEpisodes.toMutableList()
+                if (newWatched.contains(episodeKey)) {
+                    newWatched.remove(episodeKey)
+                } else {
+                    newWatched.add(episodeKey)
+                }
+                firestoreRepository.addOrUpdateMedia(show.copy(watchedEpisodes = newWatched))
+            }
+        }
+    }
+
     private fun fetchData() {
         viewModelScope.launch {
             _uiState.value = TvShowsUiState.Loading
@@ -71,33 +88,43 @@ class TvShowsViewModel(
                 val deferredEpisodes = tvShows.map { show ->
                     async {
                         val detailsResult = repository.getMediaDetails(apiKey, show.id, "tv")
-                        var epData: UpcomingEpisodeData? = null
+                        val episodesList = mutableListOf<UpcomingEpisodeData>()
                         detailsResult.onSuccess { details ->
-                            val nextEpisode = details.next_episode_to_air
-                            val lastEpisode = details.last_episode_to_air
-                            
-                            if (nextEpisode != null) {
-                                val airDate = try { LocalDate.parse(nextEpisode.air_date) } catch (e: Exception) { null }
-                                if (airDate != null) {
-                                    val diff = ChronoUnit.DAYS.between(today, airDate)
-                                    epData = UpcomingEpisodeData(show, details, nextEpisode, diff)
-                                }
-                            } else if (lastEpisode != null) {
-                                val airDate = try { LocalDate.parse(lastEpisode.air_date) } catch (e: Exception) { null }
-                                if (airDate != null) {
-                                    val diff = ChronoUnit.DAYS.between(today, airDate)
-                                    if (diff >= -30) {
-                                        epData = UpcomingEpisodeData(show, details, lastEpisode, diff)
+                            val englishTitle = details.name ?: details.title
+                            if (englishTitle != null && show.title != englishTitle) {
+                                firestoreRepository.addOrUpdateMedia(
+                                    show.copy(
+                                        title = englishTitle,
+                                        posterPath = details.poster_path ?: show.posterPath
+                                    )
+                                )
+                            }
+                            // Get episodes from the most recent season
+                            val latestSeasonNum = details.last_episode_to_air?.season_number ?: details.next_episode_to_air?.season_number
+                            if (latestSeasonNum != null) {
+                                val seasonResult = repository.getSeasonDetails(apiKey, show.id, latestSeasonNum)
+                                seasonResult.onSuccess { seasonData ->
+                                    seasonData.episodes.forEach { ep ->
+                                        if (ep.air_date != null) {
+                                            val airDate = try { LocalDate.parse(ep.air_date) } catch (e: Exception) { null }
+                                            if (airDate != null) {
+                                                val diff = ChronoUnit.DAYS.between(today, airDate)
+                                                // Show episodes from the last 30 days and upcoming 14 days
+                                                if (diff in -30..14) {
+                                                    val epToAir = EpisodeToAir(ep.id, ep.name, ep.overview ?: "", ep.air_date, ep.episode_number, ep.season_number, ep.still_path)
+                                                    episodesList.add(UpcomingEpisodeData(show, details, epToAir, diff))
+                                                }
+                                            }
+                                        }
                                     }
                                 }
                             }
                         }
-                        epData
+                        episodesList
                     }
                 }
                 
-                val upcomingEpisodes = deferredEpisodes.awaitAll().filterNotNull().sortedBy { it.daysDifference }
-
+                val upcomingEpisodes = deferredEpisodes.awaitAll().flatten().sortedBy { it.episodeToAir.air_date }
                 _uiState.value = TvShowsUiState.Success(
                     trendingShows = trendingShows,
                     watchlist = tvShows,

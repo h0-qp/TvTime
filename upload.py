@@ -1,14 +1,15 @@
-import urllib.request
-import json
-import subprocess
+import requests
+import sys
 
-try:
-    req = urllib.request.Request('https://api.gofile.io/servers')
-    with urllib.request.urlopen(req) as response:
-        data = json.loads(response.read().decode())
-        server = data['data']['servers'][0]['name']
+def upload_to_gofile(file_path):
+    server_response = requests.get('https://api.gofile.io/servers')
+    server = server_response.json()['data']['servers'][0]['name']
+    
+    with open(file_path, 'rb') as f:
+        upload_response = requests.post(
+            f'https://{server}.gofile.io/contents/uploadfile',
+            files={'file': f}
+        )
+    return upload_response.json()['data']['downloadPage']
 
-    print(f"Uploading to {server}...")
-    subprocess.run(["curl", "-s", "-F", "file=@app/build/outputs/apk/debug/app-debug.apk", f"https://{server}.gofile.io/contents/uploadfile"])
-except Exception as e:
-    print(e)
+print(upload_to_gofile('app/build/outputs/apk/debug/app-debug.apk'))

@@ -46,6 +46,24 @@ class MoviesViewModel(
             firestoreRepository.observeUserMedia().collectLatest { mediaList ->
                 val movies = mediaList.filter { it.mediaType == "movie" }
                 
+                // Fetch English details and update if they don't match
+                viewModelScope.launch {
+                    movies.forEach { movie ->
+                        val detailsResult = repository.getMediaDetails(apiKey, movie.id, "movie")
+                        detailsResult.onSuccess { details ->
+                            val englishTitle = details.title ?: details.name
+                            if (englishTitle != null && movie.title != englishTitle) {
+                                firestoreRepository.addOrUpdateMedia(
+                                    movie.copy(
+                                        title = englishTitle,
+                                        posterPath = details.poster_path ?: movie.posterPath
+                                    )
+                                )
+                            }
+                        }
+                    }
+                }
+                
                 result.onSuccess { response ->
                     _uiState.value = MoviesUiState.Success(
                         trendingMovies = response.results,

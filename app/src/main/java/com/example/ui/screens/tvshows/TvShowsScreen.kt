@@ -138,7 +138,13 @@ fun TvShowsScreen(
                                         SectionHeader(header)
                                     }
                                     items(episodes) { epData ->
-                                        UpcomingEpisodeCard(epData, onNavigateToDetails)
+                                        UpcomingEpisodeCard(
+                                            epData = epData, 
+                                            onNavigateToDetails = onNavigateToDetails,
+                                            onToggleWatched = { showId, epKey -> 
+                                                viewModel.toggleEpisodeWatched(showId, epKey) 
+                                            }
+                                        )
                                     }
                                 }
                             }
@@ -198,7 +204,7 @@ fun TrendingCard(show: MediaItem, onNavigateToDetails: (String, Int) -> Unit) {
             )
             Spacer(modifier = Modifier.height(4.dp))
             Text(
-                text = show.overview.ifEmpty { "لا يوجد وصف متاح..." },
+                text = show.overview.orEmpty().ifEmpty { "لا يوجد وصف متاح..." },
                 color = TextSecondary,
                 fontSize = 12.sp,
                 maxLines = 2,
@@ -264,12 +270,21 @@ fun WatchlistCard(show: FirestoreMediaItem, onNavigateToDetails: (String, Int) -
 }
 
 @Composable
-fun UpcomingEpisodeCard(epData: UpcomingEpisodeData, onNavigateToDetails: (String, Int) -> Unit) {
+fun UpcomingEpisodeCard(
+    epData: UpcomingEpisodeData, 
+    onNavigateToDetails: (String, Int) -> Unit,
+    onToggleWatched: (Int, String) -> Unit
+) {
+    val seasonStr = epData.episodeToAir.season_number.toString().padStart(2, '0')
+    val epStr = epData.episodeToAir.episode_number.toString().padStart(2, '0')
+    val epKey = "S${epData.episodeToAir.season_number}E${epData.episodeToAir.episode_number}"
+    val isWatched = epData.show.watchedEpisodes.contains(epKey)
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 6.dp)
-            .background(DarkGrey, RoundedCornerShape(12.dp))
+            .background(if (isWatched) Color(0xFF1E1E1E) else DarkGrey, RoundedCornerShape(12.dp))
             .clickable { onNavigateToDetails("tv", epData.show.id) }
             .padding(12.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -278,11 +293,12 @@ fun UpcomingEpisodeCard(epData: UpcomingEpisodeData, onNavigateToDetails: (Strin
         Box(
             modifier = Modifier
                 .size(40.dp)
-                .background(Color.White, CircleShape)
+                .background(if (isWatched) Color(0xFF4CAF50) else Color.White, CircleShape)
+                .clickable { onToggleWatched(epData.show.id, epKey) }
                 .padding(8.dp),
             contentAlignment = Alignment.Center
         ) {
-            Icon(Icons.Filled.Check, contentDescription = "Watched", tint = Color.LightGray)
+            Icon(Icons.Filled.Check, contentDescription = "Watched", tint = if (isWatched) Color.White else Color.LightGray)
         }
         
         Spacer(modifier = Modifier.width(16.dp))
@@ -298,12 +314,12 @@ fun UpcomingEpisodeCard(epData: UpcomingEpisodeData, onNavigateToDetails: (Strin
                     .border(1.dp, Color.White, RoundedCornerShape(16.dp))
                     .padding(horizontal = 8.dp, vertical = 4.dp)
             ) {
-                Text("< ${epData.show.title.uppercase()}", color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                Text("< ${(epData.showDetails.name ?: epData.showDetails.title ?: epData.show.title).uppercase()}", color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold)
             }
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = "S${epData.episodeToAir.season_number.toString().padStart(2, '0')} | E${epData.episodeToAir.episode_number.toString().padStart(2, '0')}",
-                color = Color.White,
+                text = "S$seasonStr | E$epStr",
+                color = if (isWatched) Color.Gray else Color.White,
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold
             )
@@ -315,14 +331,6 @@ fun UpcomingEpisodeCard(epData: UpcomingEpisodeData, onNavigateToDetails: (Strin
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
-            Spacer(modifier = Modifier.height(8.dp))
-            Box(
-                modifier = Modifier
-                    .background(GoldYellow, RoundedCornerShape(4.dp))
-                    .padding(horizontal = 6.dp, vertical = 2.dp)
-            ) {
-                Text(if (epData.daysDifference <= 0) "مُذاعة" else "جديد", color = TrueBlack, fontSize = 10.sp, fontWeight = FontWeight.Bold)
-            }
         }
         
         Spacer(modifier = Modifier.width(16.dp))
@@ -331,14 +339,21 @@ fun UpcomingEpisodeCard(epData: UpcomingEpisodeData, onNavigateToDetails: (Strin
         val imageUrl = epData.episodeToAir.still_path?.let { "https://image.tmdb.org/t/p/w500$it" } 
             ?: epData.showDetails.poster_path?.let { "https://image.tmdb.org/t/p/w500$it" }
         
-        AsyncImage(
-            model = imageUrl,
-            contentDescription = null,
-            contentScale = ContentScale.Crop,
+        Box(
             modifier = Modifier
                 .size(width = 100.dp, height = 100.dp)
                 .clip(RoundedCornerShape(8.dp))
                 .background(Color.DarkGray)
-        )
+        ) {
+            AsyncImage(
+                model = imageUrl,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize()
+            )
+            if (isWatched) {
+                Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.5f)))
+            }
+        }
     }
 }

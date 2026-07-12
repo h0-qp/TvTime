@@ -8,32 +8,32 @@ interface TmdbApi {
     @GET("trending/tv/day")
     suspend fun getTrendingTvShows(
         @Query("api_key") apiKey: String,
-        @Query("language") language: String = "ar-AE"
+        @Query("language") language: String = "en-US"
     ): MediaResponse
 
     @GET("trending/movie/day")
     suspend fun getTrendingMovies(
         @Query("api_key") apiKey: String,
-        @Query("language") language: String = "ar-AE"
+        @Query("language") language: String = "en-US"
     ): MediaResponse
 
     @GET("movie/upcoming")
     suspend fun getUpcomingMovies(
         @Query("api_key") apiKey: String,
-        @Query("language") language: String = "ar-AE"
+        @Query("language") language: String = "en-US"
     ): MediaResponse
 
     @GET("tv/on_the_air")
     suspend fun getUpcomingTvShows(
         @Query("api_key") apiKey: String,
-        @Query("language") language: String = "ar-AE"
+        @Query("language") language: String = "en-US"
     ): MediaResponse
 
     @GET("search/multi")
     suspend fun searchMulti(
         @Query("api_key") apiKey: String,
         @Query("query") query: String,
-        @Query("language") language: String = "ar-AE",
+        @Query("language") language: String = "en-US",
         @Query("page") page: Int = 1
     ): MediaResponse
 
@@ -41,14 +41,16 @@ interface TmdbApi {
     suspend fun getTvDetails(
         @Path("tv_id") tvId: Int,
         @Query("api_key") apiKey: String,
-        @Query("language") language: String = "ar-AE"
+        @Query("language") language: String = "en-US",
+        @Query("append_to_response") appendToResponse: String = "credits,similar,videos"
     ): MediaItem
 
     @GET("movie/{movie_id}")
     suspend fun getMovieDetails(
         @Path("movie_id") movieId: Int,
         @Query("api_key") apiKey: String,
-        @Query("language") language: String = "ar-AE"
+        @Query("language") language: String = "en-US",
+        @Query("append_to_response") appendToResponse: String = "credits,similar,videos"
     ): MediaItem
     
     @GET("tv/{tv_id}/season/{season_number}")
@@ -56,7 +58,7 @@ interface TmdbApi {
         @Path("tv_id") tvId: Int,
         @Path("season_number") seasonNumber: Int,
         @Query("api_key") apiKey: String,
-        @Query("language") language: String = "ar-AE"
+        @Query("language") language: String = "en-US"
     ): SeasonDetails
 }
 
@@ -71,7 +73,7 @@ data class MediaItem(
     val id: Int,
     val name: String?,
     val title: String?,
-    val overview: String,
+    val overview: String? = null,
     val poster_path: String?,
     val backdrop_path: String?,
     val media_type: String?,
@@ -82,13 +84,20 @@ data class MediaItem(
     val number_of_episodes: Int? = null,
     val next_episode_to_air: EpisodeToAir? = null,
     val last_episode_to_air: EpisodeToAir? = null,
-    val status: String? = null
+    val status: String? = null,
+    val credits: Credits? = null,
+    val similar: SimilarResponse? = null,
+    val videos: VideosResponse? = null,
+    val genres: List<Genre>? = null,
+    val vote_average: Double? = null,
+    val runtime: Int? = null,
+    val episode_run_time: List<Int>? = null
 )
 
 data class EpisodeToAir(
     val id: Int,
     val name: String,
-    val overview: String,
+    val overview: String? = null,
     val air_date: String,
     val episode_number: Int,
     val season_number: Int,
@@ -108,7 +117,8 @@ data class Episode(
     val name: String,
     val episode_number: Int,
     val season_number: Int,
-    val overview: String,
+    val overview: String? = null,
+    val air_date: String? = null,
     val still_path: String?
 )
 
@@ -118,3 +128,33 @@ data class SeasonDetails(
     val name: String,
     val episodes: List<Episode>
 )
+
+
+data class Credits(
+    val cast: List<CastMember>
+)
+
+data class CastMember(
+    val id: Int,
+    val name: String,
+    val character: String,
+    val profile_path: String?
+)
+
+data class SimilarResponse(
+    val results: List<MediaItem>
+)
+
+data class VideosResponse(
+    val results: List<VideoItem>
+)
+
+data class VideoItem(
+    val id: String,
+    val key: String,
+    val name: String,
+    val site: String,
+    val type: String
+)
+
+data class Genre(val id: Int, val name: String)

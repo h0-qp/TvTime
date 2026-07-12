@@ -195,7 +195,7 @@ fun SearchResultCard(item: MediaItem, onNavigateToDetails: (String, Int) -> Unit
             
             Spacer(modifier = Modifier.height(4.dp))
             Text(
-                text = item.overview.ifEmpty { "لا يوجد وصف متاح..." },
+                text = item.overview.orEmpty().ifEmpty { "لا يوجد وصف متاح..." },
                 color = TextSecondary,
                 fontSize = 12.sp,
                 maxLines = 2,
