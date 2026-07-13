@@ -14,6 +14,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.material.icons.filled.ArrowRight
@@ -252,6 +253,8 @@ fun DiscoverSection(title: String, items: List<MediaItem>, onNavigateToDetails: 
 
 @Composable
 fun DiscoverPosterCard(item: MediaItem, onNavigateToDetails: (String, Int) -> Unit) {
+    var isAdded by remember { mutableStateOf(false) }
+
     Box(
         modifier = Modifier
             .width(120.dp)
@@ -269,17 +272,22 @@ fun DiscoverPosterCard(item: MediaItem, onNavigateToDetails: (String, Int) -> Un
             modifier = Modifier.fillMaxSize().background(DarkGrey)
         )
         
-        // Plus icon top right
+        // Add/Check icon top right
         Box(
             modifier = Modifier
                 .padding(8.dp)
                 .align(Alignment.TopEnd)
                 .size(24.dp)
-                .background(TrueBlack.copy(alpha = 0.5f), RoundedCornerShape(4.dp))
-                .border(1.dp, GoldYellow, RoundedCornerShape(4.dp)),
+                .background(if (isAdded) GoldYellow else TrueBlack.copy(alpha = 0.5f), RoundedCornerShape(4.dp))
+                .border(1.dp, GoldYellow, RoundedCornerShape(4.dp))
+                .clickable { isAdded = !isAdded },
             contentAlignment = Alignment.Center
         ) {
-            Icon(Icons.Default.Add, contentDescription = "Add", tint = GoldYellow, modifier = Modifier.size(16.dp))
+            if (isAdded) {
+                Icon(Icons.Default.Check, contentDescription = "Added", tint = TrueBlack, modifier = Modifier.size(16.dp))
+            } else {
+                Icon(Icons.Default.Add, contentDescription = "Add", tint = GoldYellow, modifier = Modifier.size(16.dp))
+            }
         }
     }
 }
@@ -341,6 +349,8 @@ fun FeedTabContent(uiState: ExploreUiState, viewModel: ExploreViewModel, onNavig
 
 @Composable
 fun FeedCard(item: MediaItem, onNavigateToDetails: (String, Int) -> Unit) {
+    var isAdded by remember { mutableStateOf(false) }
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -364,17 +374,22 @@ fun FeedCard(item: MediaItem, onNavigateToDetails: (String, Int) -> Unit) {
                 modifier = Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.Transparent, TrueBlack.copy(alpha = 0.8f))))
             )
             
-            // Plus icon top right
+            // Add/Check icon top right
             Box(
                 modifier = Modifier
                     .padding(16.dp)
                     .align(Alignment.TopEnd)
                     .size(36.dp)
-                    .background(TrueBlack.copy(alpha = 0.5f), RoundedCornerShape(8.dp))
-                    .border(1.dp, GoldYellow, RoundedCornerShape(8.dp)),
+                    .background(if (isAdded) GoldYellow else TrueBlack.copy(alpha = 0.5f), RoundedCornerShape(8.dp))
+                    .border(1.dp, GoldYellow, RoundedCornerShape(8.dp))
+                    .clickable { isAdded = !isAdded },
                 contentAlignment = Alignment.Center
             ) {
-                Icon(Icons.Default.Add, contentDescription = "Add", tint = GoldYellow)
+                if (isAdded) {
+                    Icon(Icons.Default.Check, contentDescription = "Added", tint = TrueBlack)
+                } else {
+                    Icon(Icons.Default.Add, contentDescription = "Add", tint = GoldYellow)
+                }
             }
             
             if (item.media_type == "movie") {
@@ -511,6 +526,8 @@ fun ActivityTabContent(uiState: ExploreUiState, onNavigateToDetails: (String, In
 
 @Composable
 fun ActivityCard(item: MediaItem, onNavigateToDetails: (String, Int) -> Unit) {
+    var isAdded by remember { mutableStateOf(false) }
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -534,17 +551,22 @@ fun ActivityCard(item: MediaItem, onNavigateToDetails: (String, Int) -> Unit) {
                 modifier = Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.Transparent, TrueBlack.copy(alpha = 0.8f))))
             )
             
-            // Plus icon top right
+            // Add/Check icon top right
             Box(
                 modifier = Modifier
                     .padding(16.dp)
                     .align(Alignment.TopEnd)
                     .size(36.dp)
-                    .background(TrueBlack.copy(alpha = 0.5f), RoundedCornerShape(8.dp))
-                    .border(1.dp, GoldYellow, RoundedCornerShape(8.dp)),
+                    .background(if (isAdded) GoldYellow else TrueBlack.copy(alpha = 0.5f), RoundedCornerShape(8.dp))
+                    .border(1.dp, GoldYellow, RoundedCornerShape(8.dp))
+                    .clickable { isAdded = !isAdded },
                 contentAlignment = Alignment.Center
             ) {
-                Icon(Icons.Default.Add, contentDescription = "Add", tint = GoldYellow)
+                if (isAdded) {
+                    Icon(Icons.Default.Check, contentDescription = "Added", tint = TrueBlack)
+                } else {
+                    Icon(Icons.Default.Add, contentDescription = "Add", tint = GoldYellow)
+                }
             }
             
             if (item.media_type == "movie") {

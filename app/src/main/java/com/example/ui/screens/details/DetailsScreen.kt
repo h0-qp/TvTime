@@ -27,6 +27,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import java.time.LocalDate
+import java.time.temporal.ChronoUnit
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.example.data.remote.MediaItem
@@ -76,19 +78,24 @@ fun DetailsScreen(
         bottomBar = {
             if (uiState is DetailsUiState.Success) {
                 val state = uiState as DetailsUiState.Success
-                if (!state.isInWatchlist && state.selectedEpisodeDetails == null) {
+                if (state.selectedEpisodeDetails == null) {
+                    val backgroundColor = if (state.isInWatchlist) TrueBlack else GoldYellow
+                    val textColor = if (state.isInWatchlist) GoldYellow else TrueBlack
+                    val icon = if (state.isInWatchlist) Icons.Default.Check else Icons.Default.Add
+                    val textStr = if (state.isInWatchlist) "تمت الإضافة" else (if (mediaType == "tv") "إضافة مسلسل" else "إضافة فيلم")
+                    
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .background(GoldYellow)
+                            .background(backgroundColor)
                             .clickable { viewModel.toggleWatchlist() }
                             .padding(16.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.Add, contentDescription = null, tint = TrueBlack)
+                            Icon(icon, contentDescription = null, tint = textColor)
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("إضافة مسلسل", color = TrueBlack, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                            Text(textStr, color = textColor, fontWeight = FontWeight.Bold, fontSize = 18.sp)
                         }
                     }
                 }
@@ -228,6 +235,30 @@ fun DetailsScreen(
                                             val episodeKey = "S${episode.season_number}E${episode.episode_number}"
                                             val isWatched = state.firestoreItem?.watchedEpisodes?.contains(episodeKey) == true
                                             
+                                            val isAired = try {
+                                                if (episode.air_date.isNullOrEmpty()) true else {
+                                                    val airDate = LocalDate.parse(episode.air_date)
+                                                    val today = LocalDate.now()
+                                                    !airDate.isAfter(today)
+                                                }
+                                            } catch (e: Exception) {
+                                                true
+                                            }
+                                            
+                                            val daysUntilAired = try {
+                                                if (episode.air_date.isNullOrEmpty()) 0L else {
+                                                    val airDate = LocalDate.parse(episode.air_date)
+                                                    val today = LocalDate.now()
+                                                    if (airDate.isAfter(today)) {
+                                                        ChronoUnit.DAYS.between(today, airDate)
+                                                    } else {
+                                                        0L
+                                                    }
+                                                }
+                                            } catch (e: Exception) {
+                                                0L
+                                            }
+                                            
                                             Row(
                                                 modifier = Modifier
                                                     .fillMaxWidth()
@@ -274,23 +305,33 @@ fun DetailsScreen(
                                                 Spacer(modifier = Modifier.width(16.dp))
                                                 
                                                 // Checkmark on the left (assuming RTL)
-                                                Box(
-                                                    modifier = Modifier
-                                                        .padding(end = 16.dp)
-                                                        .size(32.dp)
-                                                        .clip(androidx.compose.foundation.shape.CircleShape)
-                                                        .background(if (isWatched) Color(0xFF81C784) else Color.Transparent)
-                                                        .border(2.dp, if (isWatched) Color(0xFF81C784) else TextSecondary, androidx.compose.foundation.shape.CircleShape)
-                                                        .clickable { 
-                                                            if (state.isInWatchlist) {
-                                                                viewModel.toggleEpisode(episode.season_number, episode.episode_number)
-                                                            }
-                                                        },
-                                                    contentAlignment = Alignment.Center
-                                                ) {
-                                                    if (isWatched) {
-                                                        Icon(Icons.Default.Check, contentDescription = "Watched", tint = TrueBlack, modifier = Modifier.size(20.dp))
+                                                if (isAired) {
+                                                    Box(
+                                                        modifier = Modifier
+                                                            .padding(end = 16.dp)
+                                                            .size(32.dp)
+                                                            .clip(androidx.compose.foundation.shape.CircleShape)
+                                                            .background(if (isWatched) Color(0xFF81C784) else Color.Transparent)
+                                                            .border(2.dp, if (isWatched) Color(0xFF81C784) else TextSecondary, androidx.compose.foundation.shape.CircleShape)
+                                                            .clickable { 
+                                                                if (state.isInWatchlist) {
+                                                                    viewModel.toggleEpisode(episode.season_number, episode.episode_number)
+                                                                }
+                                                            },
+                                                        contentAlignment = Alignment.Center
+                                                    ) {
+                                                        if (isWatched) {
+                                                            Icon(Icons.Default.Check, contentDescription = "Watched", tint = TrueBlack, modifier = Modifier.size(20.dp))
+                                                        }
                                                     }
+                                                } else {
+                                                    Text(
+                                                        text = if (daysUntilAired > 0) "$daysUntilAired يوم" else "اليوم",
+                                                        color = GoldYellow,
+                                                        fontSize = 12.sp,
+                                                        fontWeight = FontWeight.Bold,
+                                                        modifier = Modifier.padding(end = 16.dp)
+                                                    )
                                                 }
                                             }
                                         }
