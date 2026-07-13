@@ -18,10 +18,14 @@ data class DiscoverMoreUiState(
     val isLoadingMoreTv: Boolean = false,
     val isLoadingMoreMovies: Boolean = false,
     val isLoading: Boolean = false,
-    val error: String? = null
+    val error: String? = null,
+    val watchlistIds: Set<Int> = emptySet()
 )
 
-class DiscoverMoreViewModel(private val repository: MediaRepository) : ViewModel() {
+class DiscoverMoreViewModel(
+    private val firestoreRepository: com.example.data.firebase.FirestoreRepository,
+    private val repository: MediaRepository
+) : ViewModel() {
     private val _uiState = MutableStateFlow(DiscoverMoreUiState(isLoading = true))
     val uiState: StateFlow<DiscoverMoreUiState> = _uiState.asStateFlow()
 
@@ -34,6 +38,8 @@ class DiscoverMoreViewModel(private val repository: MediaRepository) : ViewModel
     private val apiKey = BuildConfig.TMDB_API_KEY
 
     init {
+        observeWatchlist()
+
         loadInitialData()
     }
 
@@ -129,13 +135,46 @@ class DiscoverMoreViewModel(private val repository: MediaRepository) : ViewModel
             }
         }
     }
+    
+    private fun observeWatchlist() {
+        viewModelScope.launch {
+            firestoreRepository.observeUserMedia().collect { mediaList ->
+                val ids = mediaList.map { it.id }.toSet()
+                _uiState.update { it.copy(watchlistIds = ids) }
+            }
+        }
+    }
+
+    fun toggleWatchlist(item: MediaItem) {
+        viewModelScope.launch {
+            val currentState = _uiState.value
+            val isAdded = currentState.watchlistIds.contains(item.id)
+            if (isAdded) {
+                firestoreRepository.removeMedia(item.id)
+            } else {
+                firestoreRepository.addOrUpdateMedia(
+                    com.example.data.firebase.FirestoreMediaItem(
+                        id = item.id,
+                        title = item.name ?: item.title ?: "Unknown",
+                        posterPath = item.poster_path,
+                        mediaType = item.media_type ?: "tv",
+                        isWatched = false,
+                        addedAt = System.currentTimeMillis()
+                    )
+                )
+            }
+        }
+    }
 }
 
-class DiscoverMoreViewModelFactory(private val repository: MediaRepository) : ViewModelProvider.Factory {
+class DiscoverMoreViewModelFactory(
+    private val firestoreRepository: com.example.data.firebase.FirestoreRepository,
+    private val repository: MediaRepository
+) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(DiscoverMoreViewModel::class.java)) {
             @Suppress("UNCHECKED_CAST")
-            return DiscoverMoreViewModel(repository) as T
+            return DiscoverMoreViewModel(firestoreRepository, repository) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }

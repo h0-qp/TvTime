@@ -30,12 +30,13 @@ import com.example.ui.theme.TrueBlack
 
 @Composable
 fun DiscoverMoreScreen(
+    firestoreRepository: com.example.data.firebase.FirestoreRepository,
     repository: MediaRepository,
     onNavigateBack: () -> Unit,
     onNavigateToDetails: (String, Int) -> Unit
 ) {
     val viewModel: DiscoverMoreViewModel = viewModel(
-        factory = DiscoverMoreViewModelFactory(repository)
+        factory = DiscoverMoreViewModelFactory(firestoreRepository, repository)
     )
     val uiState by viewModel.uiState.collectAsState()
     

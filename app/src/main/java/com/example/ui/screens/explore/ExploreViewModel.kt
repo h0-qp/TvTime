@@ -10,6 +10,9 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import com.example.data.firebase.FirestoreRepository
+import com.example.data.firebase.FirestoreMediaItem
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
 import com.example.data.remote.Genre
@@ -25,12 +28,14 @@ sealed class ExploreUiState {
         val feedItems: List<MediaItem> = emptyList(),
         val genres: List<Genre> = emptyList(),
         val activityItems: List<MediaItem> = emptyList(),
+        val watchlistIds: Set<Int> = emptySet(),
         val isLoadingMoreFeed: Boolean = false
     ) : ExploreUiState()
     data class Error(val message: String) : ExploreUiState()
 }
 
 class ExploreViewModel(
+    private val firestoreRepository: FirestoreRepository,
     private val repository: MediaRepository
 ) : ViewModel() {
 
@@ -46,6 +51,8 @@ class ExploreViewModel(
     private var isFeedLastPage = false
 
     init {
+        observeWatchlist()
+
         loadDiscoverData()
     }
 
@@ -154,15 +161,49 @@ class ExploreViewModel(
             _uiState.value = ExploreUiState.Error(exception.message ?: "Unknown error occurred")
         }
     }
+
+    private fun observeWatchlist() {
+        viewModelScope.launch {
+            firestoreRepository.observeUserMedia().collectLatest { mediaList ->
+                val ids = mediaList.map { it.id }.toSet()
+                val currentState = _uiState.value
+                if (currentState is ExploreUiState.Success) {
+                    _uiState.value = currentState.copy(watchlistIds = ids)
+                }
+            }
+        }
+    }
+
+    fun toggleWatchlist(item: MediaItem) {
+        viewModelScope.launch {
+            val currentState = _uiState.value as? ExploreUiState.Success ?: return@launch
+            val isAdded = currentState.watchlistIds.contains(item.id)
+            if (isAdded) {
+                firestoreRepository.removeMedia(item.id)
+            } else {
+                firestoreRepository.addOrUpdateMedia(
+                    FirestoreMediaItem(
+                        id = item.id,
+                        title = item.name ?: item.title ?: "Unknown",
+                        posterPath = item.poster_path,
+                        mediaType = item.media_type ?: "tv",
+                        isWatched = false,
+                        addedAt = System.currentTimeMillis()
+                    )
+                )
+            }
+        }
+    }
 }
 
 class ExploreViewModelFactory(
+    private val firestoreRepository: FirestoreRepository,
     private val repository: MediaRepository
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(ExploreViewModel::class.java)) {
             @Suppress("UNCHECKED_CAST")
-            return ExploreViewModel(repository) as T
+            return ExploreViewModel(firestoreRepository, repository) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }

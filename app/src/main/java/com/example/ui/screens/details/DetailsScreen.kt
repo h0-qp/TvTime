@@ -28,6 +28,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import java.time.LocalDate
+import java.time.LocalDateTime
 import java.time.temporal.ChronoUnit
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
@@ -235,28 +236,33 @@ fun DetailsScreen(
                                             val episodeKey = "S${episode.season_number}E${episode.episode_number}"
                                             val isWatched = state.firestoreItem?.watchedEpisodes?.contains(episodeKey) == true
                                             
-                                            val isAired = try {
-                                                if (episode.air_date.isNullOrEmpty()) true else {
+                                            val (isAired, countdownText) = try {
+                                                if (episode.air_date.isNullOrEmpty()) {
+                                                    Pair(true, "")
+                                                } else {
                                                     val airDate = LocalDate.parse(episode.air_date)
-                                                    val today = LocalDate.now()
-                                                    !airDate.isAfter(today)
-                                                }
-                                            } catch (e: Exception) {
-                                                true
-                                            }
-                                            
-                                            val daysUntilAired = try {
-                                                if (episode.air_date.isNullOrEmpty()) 0L else {
-                                                    val airDate = LocalDate.parse(episode.air_date)
-                                                    val today = LocalDate.now()
-                                                    if (airDate.isAfter(today)) {
-                                                        ChronoUnit.DAYS.between(today, airDate)
+                                                    val now = LocalDateTime.now()
+                                                    val airDateTime = airDate.atTime(20, 0) // Assume 8 PM drop
+                                                    
+                                                    if (now.isAfter(airDateTime)) {
+                                                        Pair(true, "")
                                                     } else {
-                                                        0L
+                                                        val days = ChronoUnit.DAYS.between(now.toLocalDate(), airDate)
+                                                        if (days > 0) {
+                                                            Pair(false, "$days يوم")
+                                                        } else {
+                                                            val hours = ChronoUnit.HOURS.between(now, airDateTime)
+                                                            if (hours > 0) {
+                                                                Pair(false, "$hours ساعة")
+                                                            } else {
+                                                                val minutes = ChronoUnit.MINUTES.between(now, airDateTime)
+                                                                Pair(false, "$minutes دقيقة")
+                                                            }
+                                                        }
                                                     }
                                                 }
                                             } catch (e: Exception) {
-                                                0L
+                                                Pair(true, "")
                                             }
                                             
                                             Row(
@@ -326,7 +332,7 @@ fun DetailsScreen(
                                                     }
                                                 } else {
                                                     Text(
-                                                        text = if (daysUntilAired > 0) "$daysUntilAired يوم" else "اليوم",
+                                                        text = countdownText,
                                                         color = GoldYellow,
                                                         fontSize = 12.sp,
                                                         fontWeight = FontWeight.Bold,

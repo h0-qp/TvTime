@@ -58,13 +58,14 @@ import com.example.ui.theme.TrueBlack
 
 @Composable
 fun ExploreScreen(
+    firestoreRepository: com.example.data.firebase.FirestoreRepository,
     repository: MediaRepository,
     onNavigateToDetails: (String, Int) -> Unit,
     onNavigateToDiscoverMore: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val viewModel: ExploreViewModel = viewModel(
-        factory = ExploreViewModelFactory(repository)
+        factory = ExploreViewModelFactory(firestoreRepository, repository)
     )
     val uiState by viewModel.uiState.collectAsState()
     val searchQuery by viewModel.searchQuery.collectAsState()
@@ -124,10 +125,10 @@ fun ExploreScreen(
                 SearchResultsContent(uiState, onNavigateToDetails)
             } else {
                 when (selectedTab) {
-                    "اكتشف" -> DiscoverTabContent(uiState, onNavigateToDetails, onNavigateToDiscoverMore)
+                    "اكتشف" -> DiscoverTabContent(uiState, viewModel, onNavigateToDetails, onNavigateToDiscoverMore)
                     "تغذية" -> FeedTabContent(uiState, viewModel, onNavigateToDetails)
                     "مجموعات" -> CollectionsTabContent(uiState)
-                    "نشاط" -> ActivityTabContent(uiState, onNavigateToDetails)
+                    "نشاط" -> ActivityTabContent(uiState, viewModel, onNavigateToDetails)
                 }
             }
         }
@@ -192,7 +193,7 @@ fun TabButton(title: String, isSelected: Boolean, onClick: () -> Unit) {
 }
 
 @Composable
-fun DiscoverTabContent(uiState: ExploreUiState, onNavigateToDetails: (String, Int) -> Unit, onNavigateToDiscoverMore: () -> Unit) {
+fun DiscoverTabContent(uiState: ExploreUiState, viewModel: ExploreViewModel, onNavigateToDetails: (String, Int) -> Unit, onNavigateToDiscoverMore: () -> Unit) {
     when (uiState) {
         is ExploreUiState.Loading -> {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -206,15 +207,15 @@ fun DiscoverTabContent(uiState: ExploreUiState, onNavigateToDetails: (String, In
                     .verticalScroll(rememberScrollState())
                     .padding(bottom = 16.dp)
             ) {
-                DiscoverSection(title = "أفضل البرامج لك", items = uiState.upcomingTvShows, onNavigateToDetails)
+                DiscoverSection(title = "أفضل البرامج لك", items = uiState.upcomingTvShows, currentState = uiState, viewModel = viewModel, onNavigateToDetails = onNavigateToDetails)
                 Spacer(modifier = Modifier.height(24.dp))
-                DiscoverSection(title = "البرامج الرائجة", items = uiState.trendingTvShows, onNavigateToDetails)
+                DiscoverSection(title = "البرامج الرائجة", items = uiState.trendingTvShows, currentState = uiState, viewModel = viewModel, onNavigateToDetails = onNavigateToDetails)
                 
                 Spacer(modifier = Modifier.height(16.dp))
                 BrowseAllButton("تصفح جميع البرامج", onClick = onNavigateToDiscoverMore)
                 
                 Spacer(modifier = Modifier.height(32.dp))
-                DiscoverSection(title = "الأفلام الرائجة", items = uiState.trendingMovies, onNavigateToDetails)
+                DiscoverSection(title = "الأفلام الرائجة", items = uiState.trendingMovies, currentState = uiState, viewModel = viewModel, onNavigateToDetails = onNavigateToDetails)
                 
                 Spacer(modifier = Modifier.height(16.dp))
                 BrowseAllButton("تصفح جميع الأفلام", onClick = onNavigateToDiscoverMore)
@@ -225,7 +226,7 @@ fun DiscoverTabContent(uiState: ExploreUiState, onNavigateToDetails: (String, In
 }
 
 @Composable
-fun DiscoverSection(title: String, items: List<MediaItem>, onNavigateToDetails: (String, Int) -> Unit) {
+fun DiscoverSection(title: String, items: List<MediaItem>, currentState: ExploreUiState.Success, viewModel: ExploreViewModel, onNavigateToDetails: (String, Int) -> Unit) {
     Column(modifier = Modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier
@@ -245,15 +246,15 @@ fun DiscoverSection(title: String, items: List<MediaItem>, onNavigateToDetails: 
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             items(items.take(10)) { item ->
-                DiscoverPosterCard(item, onNavigateToDetails)
+                DiscoverPosterCard(item, currentState, { viewModel.toggleWatchlist(it) }, onNavigateToDetails)
             }
         }
     }
 }
 
 @Composable
-fun DiscoverPosterCard(item: MediaItem, onNavigateToDetails: (String, Int) -> Unit) {
-    var isAdded by remember { mutableStateOf(false) }
+fun DiscoverPosterCard(item: MediaItem, currentState: ExploreUiState.Success, onToggleAdd: (MediaItem) -> Unit, onNavigateToDetails: (String, Int) -> Unit) {
+    val isAdded = currentState.watchlistIds.contains(item.id)
 
     Box(
         modifier = Modifier
@@ -280,7 +281,7 @@ fun DiscoverPosterCard(item: MediaItem, onNavigateToDetails: (String, Int) -> Un
                 .size(24.dp)
                 .background(if (isAdded) GoldYellow else TrueBlack.copy(alpha = 0.5f), RoundedCornerShape(4.dp))
                 .border(1.dp, GoldYellow, RoundedCornerShape(4.dp))
-                .clickable { isAdded = !isAdded },
+                .clickable { onToggleAdd(item) },
             contentAlignment = Alignment.Center
         ) {
             if (isAdded) {
@@ -333,7 +334,7 @@ fun FeedTabContent(uiState: ExploreUiState, viewModel: ExploreViewModel, onNavig
                     viewModel.loadMoreFeed()
                 }
                 
-                FeedCard(item, onNavigateToDetails)
+                FeedCard(item, uiState, { viewModel.toggleWatchlist(it) }, onNavigateToDetails)
                 Spacer(modifier = Modifier.height(16.dp))
             }
             if (uiState.isLoadingMoreFeed) {
@@ -348,8 +349,8 @@ fun FeedTabContent(uiState: ExploreUiState, viewModel: ExploreViewModel, onNavig
 }
 
 @Composable
-fun FeedCard(item: MediaItem, onNavigateToDetails: (String, Int) -> Unit) {
-    var isAdded by remember { mutableStateOf(false) }
+fun FeedCard(item: MediaItem, currentState: ExploreUiState.Success, onToggleAdd: (MediaItem) -> Unit, onNavigateToDetails: (String, Int) -> Unit) {
+    val isAdded = currentState.watchlistIds.contains(item.id)
 
     Column(
         modifier = Modifier
@@ -382,7 +383,7 @@ fun FeedCard(item: MediaItem, onNavigateToDetails: (String, Int) -> Unit) {
                     .size(36.dp)
                     .background(if (isAdded) GoldYellow else TrueBlack.copy(alpha = 0.5f), RoundedCornerShape(8.dp))
                     .border(1.dp, GoldYellow, RoundedCornerShape(8.dp))
-                    .clickable { isAdded = !isAdded },
+                    .clickable { onToggleAdd(item) },
                 contentAlignment = Alignment.Center
             ) {
                 if (isAdded) {
@@ -506,7 +507,7 @@ fun CollectionCard(genre: com.example.data.remote.Genre) {
 }
 
 @Composable
-fun ActivityTabContent(uiState: ExploreUiState, onNavigateToDetails: (String, Int) -> Unit) {
+fun ActivityTabContent(uiState: ExploreUiState, viewModel: ExploreViewModel, onNavigateToDetails: (String, Int) -> Unit) {
     if (uiState is ExploreUiState.Success) {
         val activityItems = uiState.activityItems
         
@@ -517,7 +518,7 @@ fun ActivityTabContent(uiState: ExploreUiState, onNavigateToDetails: (String, In
                 .padding(horizontal = 16.dp, vertical = 8.dp)
         ) {
             activityItems.forEach { item ->
-                ActivityCard(item, onNavigateToDetails)
+                ActivityCard(item, uiState, { viewModel.toggleWatchlist(it) }, onNavigateToDetails)
                 Spacer(modifier = Modifier.height(16.dp))
             }
         }
@@ -525,8 +526,8 @@ fun ActivityTabContent(uiState: ExploreUiState, onNavigateToDetails: (String, In
 }
 
 @Composable
-fun ActivityCard(item: MediaItem, onNavigateToDetails: (String, Int) -> Unit) {
-    var isAdded by remember { mutableStateOf(false) }
+fun ActivityCard(item: MediaItem, currentState: ExploreUiState.Success, onToggleAdd: (MediaItem) -> Unit, onNavigateToDetails: (String, Int) -> Unit) {
+    val isAdded = currentState.watchlistIds.contains(item.id)
 
     Column(
         modifier = Modifier
@@ -559,7 +560,7 @@ fun ActivityCard(item: MediaItem, onNavigateToDetails: (String, Int) -> Unit) {
                     .size(36.dp)
                     .background(if (isAdded) GoldYellow else TrueBlack.copy(alpha = 0.5f), RoundedCornerShape(8.dp))
                     .border(1.dp, GoldYellow, RoundedCornerShape(8.dp))
-                    .clickable { isAdded = !isAdded },
+                    .clickable { onToggleAdd(item) },
                 contentAlignment = Alignment.Center
             ) {
                 if (isAdded) {

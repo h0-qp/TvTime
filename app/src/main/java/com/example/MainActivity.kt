@@ -146,6 +146,7 @@ fun TrackVerseApp(appContainer: com.example.data.AppContainer) {
             composable(Screen.Explore.route) { 
                 com.example.ui.screens.explore.ExploreScreen(
                     repository = appContainer.mediaRepository,
+                    firestoreRepository = appContainer.firestoreRepository,
                     onNavigateToDetails = { mediaType, mediaId ->
                         navController.navigate("details/$mediaType/$mediaId")
                     },
@@ -158,6 +159,7 @@ fun TrackVerseApp(appContainer: com.example.data.AppContainer) {
             composable("discover_more") {
                 com.example.ui.screens.explore.DiscoverMoreScreen(
                     repository = appContainer.mediaRepository,
+                    firestoreRepository = appContainer.firestoreRepository,
                     onNavigateBack = { navController.popBackStack() },
                     onNavigateToDetails = { mediaType, mediaId ->
                         navController.navigate("details/$mediaType/$mediaId")
