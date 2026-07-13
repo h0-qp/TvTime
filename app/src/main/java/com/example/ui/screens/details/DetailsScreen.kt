@@ -7,6 +7,10 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.MoreHoriz
+import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
@@ -66,59 +70,7 @@ fun DetailsScreen(
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { },
-                navigationIcon = {
-                    IconButton(onClick = {
-                        val state = uiState
-                        if (state is DetailsUiState.Success && state.selectedEpisodeDetails != null) {
-                            viewModel.selectEpisode(null)
-                        } else {
-                            onNavigateBack()
-                        }
-                    }) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = TextPrimary)
-                    }
-                },
-                actions = {
-                    IconButton(onClick = { showBottomSheet = true }) {
-                        Icon(Icons.Default.MoreVert, contentDescription = "Options", tint = TextPrimary)
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = TrueBlack
-                )
-            )
-        },
-        bottomBar = {
-            if (uiState is DetailsUiState.Success) {
-                val state = uiState as DetailsUiState.Success
-                if (state.selectedEpisodeDetails == null) {
-                    val backgroundColor = if (state.isInWatchlist) TrueBlack else GoldYellow
-                    val textColor = if (state.isInWatchlist) GoldYellow else TrueBlack
-                    val icon = if (state.isInWatchlist) Icons.Default.Check else Icons.Default.Add
-                    val textStr = if (state.isInWatchlist) "تمت الإضافة" else (if (mediaType == "tv") "إضافة مسلسل" else "إضافة فيلم")
-                    
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .background(backgroundColor)
-                            .clickable { viewModel.toggleWatchlist() }
-                            .padding(16.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(icon, contentDescription = null, tint = textColor)
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(textStr, color = textColor, fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                        }
-                    }
-                }
-            }
-        },
-        containerColor = TrueBlack
-    ) { innerPadding ->
+        containerColor = TrueBlack    ) { innerPadding ->
         Box(
             modifier = modifier
                 .fillMaxSize()
@@ -158,38 +110,119 @@ fun DetailsScreen(
                                 .fillMaxSize()
                                 .verticalScroll(rememberScrollState())
                         ) {
-                        // Backdrop
-                        AsyncImage(
-                            model = "https://image.tmdb.org/t/p/w780${item.backdrop_path ?: item.poster_path}",
-                            contentDescription = null,
-                            contentScale = ContentScale.Crop,
+                        val hours = (item.runtime ?: 0) / 60
+                        val mins = (item.runtime ?: 0) % 60
+                        val durationStr = if (hours > 0) "${hours}h ${mins}m" else "${mins}m"
+                        val genresStr = item.genres?.joinToString(", ") { it.name } ?: ""
+
+                        // Backdrop with overlay
+                        Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(220.dp)
+                                .height(300.dp)
                                 .background(DarkGrey)
-                        )
-
-                        Spacer(modifier = Modifier.height(16.dp))
-
-                        // Info
-                        Column(modifier = Modifier.padding(horizontal = 16.dp)) {
-                            Text(
-                                text = title,
-                                color = TextPrimary,
-                                fontSize = 28.sp,
-                                fontWeight = FontWeight.Bold
-                            )
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text(
-                                text = "${if (mediaType == "tv") "موسم/مواسم" else "فيلم"} • HBO",
-                                color = TextSecondary,
-                                fontSize = 14.sp
+                        ) {
+                            AsyncImage(
+                                model = "https://image.tmdb.org/t/p/w780${item.backdrop_path ?: item.poster_path}",
+                                contentDescription = null,
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.fillMaxSize()
                             )
                             
+                            // Top Bar Icons
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                IconButton(onClick = { showBottomSheet = true }) {
+                                    Icon(Icons.Default.MoreHoriz, contentDescription = "Options", tint = TrueBlack, modifier = Modifier.background(Color.White.copy(alpha=0.5f), androidx.compose.foundation.shape.CircleShape).padding(4.dp))
+                                }
+                                IconButton(onClick = { onNavigateBack() }) {
+                                    Icon(Icons.Default.KeyboardArrowDown, contentDescription = "Back", tint = TrueBlack, modifier = Modifier.background(Color.White.copy(alpha=0.5f), androidx.compose.foundation.shape.CircleShape).padding(4.dp))
+                                }
+                            }
+
+                            // Gradient and Title
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .background(
+                                        androidx.compose.ui.graphics.Brush.verticalGradient(
+                                            colors = listOf(Color.Transparent, TrueBlack),
+                                            startY = 300f
+                                        )
+                                    )
+                            )
+                            
+                            Column(
+                                modifier = Modifier
+                                    .align(Alignment.BottomEnd)
+                                    .padding(16.dp),
+                                horizontalAlignment = Alignment.End
+                            ) {
+                                Text(
+                                    text = title,
+                                    color = TextPrimary,
+                                    fontSize = 28.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = "$durationStr • $genresStr",
+                                    color = TextSecondary,
+                                    fontSize = 14.sp
+                                )
+                            }
+                        }
+                        
+                        // Actions Row
+                        val isWatched = state.isInWatchlist // Reusing watchlist for watched state based on prompt
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 16.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            // Left Side (Right in LTR code, but since we use SpaceBetween, it will lay out based on layout direction. We'll manually order them or rely on Compose RTL support)
+                            // We will place them in LTR order: Checkmark (left), Eye (middle), Date (right). Wait, RTL layout places first item on the right.
+                            // The screenshot shows Date on the right. So Date is the first item in the Row.
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Default.DateRange, contentDescription = "Date", tint = TextSecondary, modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(text = date, color = TextSecondary, fontSize = 14.sp)
+                            }
+                            
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Outlined.Visibility, contentDescription = "Visibility", tint = TextSecondary, modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(text = if (isWatched) "تمت المشاهدة" else "لم يُشاهد", color = TextSecondary, fontSize = 14.sp)
+                            }
+                            
+                            Box(
+                                modifier = Modifier
+                                    .size(48.dp)
+                                    .clip(androidx.compose.foundation.shape.CircleShape)
+                                    .background(if (isWatched) androidx.compose.ui.graphics.Color(0xFF4CAF50) else TrueBlack)
+                                    .border(1.dp, if (isWatched) androidx.compose.ui.graphics.Color(0xFF4CAF50) else TextSecondary, androidx.compose.foundation.shape.CircleShape)
+                                    .clickable { viewModel.toggleWatchlist() },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Check,
+                                    contentDescription = "Watched",
+                                    tint = if (isWatched) TrueBlack else TextSecondary,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            }
+                        }
+                        
+                        Spacer(modifier = Modifier.height(8.dp))
                             Spacer(modifier = Modifier.height(24.dp))
                             
                             var selectedTab by remember { mutableIntStateOf(0) }
-                            val tabs = if (mediaType == "tv") listOf("حول", "الحلقات") else listOf("حول")
+                            val tabs = if (mediaType == "tv") listOf("حول", "أكثر", "الحلقات") else listOf("حول", "أكثر")
 
                             TabRow(
                                 selectedTabIndex = selectedTab,
@@ -216,7 +249,10 @@ fun DetailsScreen(
                             if (selectedTab == 0) {
                                 // About Tab
                                 AboutTabContent(item = item)
-                            } else {
+                            } else if (selectedTab == 1) {
+                                // More Tab
+                                MoreTabContent(item = item)
+                            } else if (selectedTab == 2) {
                                 // Episodes Tab
                                 if (mediaType == "tv" && !item.seasons.isNullOrEmpty()) {
                                     LazyRow(
@@ -363,7 +399,6 @@ fun DetailsScreen(
                             }
                         }
                     }
-                    }
                 }
             }
         }
@@ -493,8 +528,8 @@ fun AboutTabContent(item: MediaItem) {
         
         val year = item.first_air_date?.take(4) ?: item.release_date?.take(4) ?: ""
         // TMDB genres are stored in item.genres?.name if they are returned, but currently TmdbApi returns full details on details request.
-        val genres = "خيال, دراما, مغامرة, حركة, حربي" // Using a static one for now as TMDB genre list would require extra parsing
-        Text(text = "$year - الحاضر • $genres", color = TextSecondary, fontSize = 14.sp)
+        val genres = item.genres?.joinToString(", ") { it.name } ?: ""
+        Text(text = "$year • $genres", color = TextSecondary, fontSize = 14.sp)
         
         Spacer(modifier = Modifier.height(12.dp))
         val rating = item.vote_average?.let { String.format("%.1f", it) } ?: "0.0"
@@ -537,6 +572,46 @@ fun AboutTabContent(item: MediaItem) {
             Spacer(modifier = Modifier.height(24.dp))
         }
         
+        if (item.credits?.cast?.isNotEmpty() == true) {
+            Text(text = "طاقم الممثلين", color = TextPrimary, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+            Spacer(modifier = Modifier.height(16.dp))
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                items(item.credits.cast.take(10)) { cast ->
+                    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.width(80.dp)) {
+                        AsyncImage(
+                            model = cast.profile_path?.let { "https://image.tmdb.org/t/p/w185$it" },
+                            contentDescription = cast.name,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.size(80.dp).clip(androidx.compose.foundation.shape.CircleShape).background(DarkGrey)
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(text = cast.name, color = TextPrimary, fontSize = 12.sp, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+                        Text(text = cast.character, color = TextSecondary, fontSize = 10.sp, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+                    }
+                }
+            }
+            Spacer(modifier = Modifier.height(32.dp))
+        }
+
+        if (item.similar?.results?.isNotEmpty() == true) {
+            Text(text = "ما شاهده الناس أيضاً", color = TextPrimary, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+            Spacer(modifier = Modifier.height(16.dp))
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                items(item.similar.results.take(10)) { similarItem ->
+                    AsyncImage(
+                        model = "https://image.tmdb.org/t/p/w342${similarItem.poster_path}",
+                        contentDescription = similarItem.title ?: similarItem.name,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.width(120.dp).height(180.dp).clip(RoundedCornerShape(8.dp)).background(DarkGrey)
+                    )
+                }
+            }
+            Spacer(modifier = Modifier.height(32.dp))
+        }
+
+        Text(text = "التعليقات", color = TextPrimary, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+        Spacer(modifier = Modifier.height(16.dp))
+        Text(text = "لا توجد تعليقات متاحة حالياً.", color = TextSecondary, fontSize = 14.sp)
         Spacer(modifier = Modifier.height(32.dp))
     }
 }
@@ -620,5 +695,43 @@ fun EpisodeDetailsContent(
         }
         
         Spacer(modifier = Modifier.height(32.dp))
+    }
+}
+
+
+@Composable
+fun MoreTabContent(item: MediaItem) {
+    Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+        Text(text = "مقاطع فيديو إضافية", color = TextPrimary, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+        Spacer(modifier = Modifier.height(16.dp))
+        
+        val extras = item.videos?.results?.filter { it.type != "Trailer" }
+        if (!extras.isNullOrEmpty()) {
+            extras.forEach { video ->
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp).clip(RoundedCornerShape(8.dp)).background(DarkGrey).clickable { },
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column(modifier = Modifier.padding(16.dp).weight(1f)) {
+                        Text(text = video.name, color = TextPrimary, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(text = video.type, color = TextSecondary, fontSize = 12.sp)
+                    }
+                    Box(
+                        modifier = Modifier.size(80.dp).background(Color(0xFF333333)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(Icons.Default.PlayArrow, contentDescription = "Play", tint = TextPrimary, modifier = Modifier.size(32.dp))
+                    }
+                }
+            }
+        } else {
+            Text(text = "لا توجد مقاطع إضافية.", color = TextSecondary, fontSize = 14.sp)
+        }
+        
+        Spacer(modifier = Modifier.height(24.dp))
+        
+        // You could add production companies here if we parsed them
     }
 }
