@@ -13,6 +13,14 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.filled.PlaylistAdd
+import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Remove
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.*
 import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.runtime.*
@@ -54,6 +62,8 @@ fun DetailsScreen(
         factory = DetailsViewModelFactory(repository, firestoreRepository, mediaId, mediaType)
     )
     val uiState by viewModel.uiState.collectAsState()
+    var showBottomSheet by remember { mutableStateOf(false) }
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     Scaffold(
         topBar = {
@@ -69,6 +79,11 @@ fun DetailsScreen(
                         }
                     }) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = TextPrimary)
+                    }
+                },
+                actions = {
+                    IconButton(onClick = { showBottomSheet = true }) {
+                        Icon(Icons.Default.MoreVert, contentDescription = "Options", tint = TextPrimary)
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -352,6 +367,69 @@ fun DetailsScreen(
                 }
             }
         }
+    if (showBottomSheet) {
+        ModalBottomSheet(
+            onDismissRequest = { showBottomSheet = false },
+            sheetState = sheetState,
+            containerColor = TrueBlack
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 32.dp)
+            ) {
+                if (uiState is DetailsUiState.Success && (uiState as DetailsUiState.Success).isInWatchlist) {
+                    Text(
+                        text = "تتم المشاهدة",
+                        color = TextPrimary,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                    )
+                    HorizontalDivider(
+                        color = GoldYellow,
+                        thickness = 2.dp,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+                }
+                val menuItems = listOf(
+                    Pair("تخصيص", Icons.Default.Edit),
+                    Pair("مفضلة", Icons.Default.FavoriteBorder),
+                    Pair("إضافة إلى قائمة", Icons.Default.PlaylistAdd),
+                    Pair("شاهد لاحقًا", Icons.Default.Schedule),
+                    Pair("إيقاف المشاهدة", Icons.Default.Close),
+                    Pair("إزالة العرض", Icons.Default.Remove),
+                    Pair("مشاركة", Icons.Default.Share)
+                )
+                menuItems.forEach { (text, icon) ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                if (text == "إزالة العرض" && uiState is DetailsUiState.Success) {
+                                    val state = uiState as DetailsUiState.Success
+                                    if (state.isInWatchlist) {
+                                        viewModel.toggleWatchlist()
+                                    }
+                                    showBottomSheet = false
+                                } else {
+                                    showBottomSheet = false
+                                }
+                            }
+                            .padding(horizontal = 16.dp, vertical = 16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(text = text, color = TextPrimary, fontSize = 16.sp)
+                        Icon(icon, contentDescription = text, tint = TextPrimary)
+                    }
+                    if (text != "مشاركة") {
+                        HorizontalDivider(color = DarkGrey)
+                    }
+                }
+            }
+        }
+    }
     }
 }
 
@@ -365,7 +443,6 @@ fun AboutTabContent(item: MediaItem) {
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Text(text = "أين تُشاهد", color = TextPrimary, fontSize = 18.sp, fontWeight = FontWeight.Bold)
-            Icon(Icons.Default.Settings, contentDescription = "Settings", tint = TextPrimary, modifier = Modifier.size(20.dp))
         }
         Spacer(modifier = Modifier.height(16.dp))
         Row(
@@ -385,7 +462,7 @@ fun AboutTabContent(item: MediaItem) {
         }
         
         Spacer(modifier = Modifier.height(24.dp))
-        Divider(color = DarkGrey)
+        HorizontalDivider(color = DarkGrey)
         Spacer(modifier = Modifier.height(24.dp))
         
         Text(text = "ما أكثر ما يثير اهتمامك في هذا البرنامج؟", color = TextPrimary, fontSize = 14.sp, modifier = Modifier.align(Alignment.CenterHorizontally))
@@ -408,25 +485,6 @@ fun AboutTabContent(item: MediaItem) {
         }
         
         Spacer(modifier = Modifier.height(24.dp))
-        Divider(color = DarkGrey)
-        Spacer(modifier = Modifier.height(24.dp))
-        
-        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Column {
-                Text(text = "مشهور", color = TextPrimary, fontSize = 18.sp, fontWeight = FontWeight.Bold)
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(text = "أضاف 2M هذا البرنامج", color = TextSecondary, fontSize = 14.sp)
-            }
-            Box(
-                modifier = Modifier.size(48.dp).clip(androidx.compose.foundation.shape.CircleShape).background(Color(0xFF81C784)),
-                contentAlignment = Alignment.Center
-            ) {
-                Text("👥", fontSize = 24.sp)
-            }
-        }
-        
-        Spacer(modifier = Modifier.height(24.dp))
-        Divider(color = DarkGrey)
         Spacer(modifier = Modifier.height(24.dp))
         
         // عرض المعلومات
@@ -479,49 +537,6 @@ fun AboutTabContent(item: MediaItem) {
             Spacer(modifier = Modifier.height(24.dp))
         }
         
-        Divider(color = DarkGrey)
-        Spacer(modifier = Modifier.height(24.dp))
-        
-        // Cast
-        if (!item.credits?.cast.isNullOrEmpty()) {
-            Text(text = "طاقم الممثلين", color = TextPrimary, fontSize = 18.sp, fontWeight = FontWeight.Bold)
-            Spacer(modifier = Modifier.height(16.dp))
-            LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                items(item.credits!!.cast.take(15)) { actor ->
-                    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.width(100.dp)) {
-                        AsyncImage(
-                            model = actor.profile_path?.let { "https://image.tmdb.org/t/p/w185$it" },
-                            contentDescription = actor.name,
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier.size(100.dp).clip(RoundedCornerShape(8.dp)).background(DarkGrey)
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(text = actor.name, color = TextPrimary, fontSize = 12.sp, maxLines = 1, fontWeight = FontWeight.Bold)
-                        Text(text = actor.character, color = TextSecondary, fontSize = 12.sp, maxLines = 1)
-                    }
-                }
-            }
-            Spacer(modifier = Modifier.height(24.dp))
-            Divider(color = DarkGrey)
-            Spacer(modifier = Modifier.height(24.dp))
-        }
-        
-        // Similar
-        if (!item.similar?.results.isNullOrEmpty()) {
-            Text(text = "ما شاهده الناس أيضًا", color = TextPrimary, fontSize = 18.sp, fontWeight = FontWeight.Bold)
-            Spacer(modifier = Modifier.height(16.dp))
-            LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                items(item.similar!!.results.take(10)) { similarItem ->
-                    AsyncImage(
-                        model = similarItem.poster_path?.let { "https://image.tmdb.org/t/p/w342$it" },
-                        contentDescription = similarItem.name ?: similarItem.title,
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.width(120.dp).height(180.dp).clip(RoundedCornerShape(8.dp)).background(DarkGrey)
-                    )
-                }
-            }
-        }
-        
         Spacer(modifier = Modifier.height(32.dp))
     }
 }
@@ -533,66 +548,18 @@ fun EpisodeDetailsContent(
     onToggleWatched: () -> Unit,
     showTitle: String
 ) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-    ) {
-        // Image with Text overlay
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(250.dp)
-        ) {
-            AsyncImage(
-                model = episode.still_path?.let { "https://image.tmdb.org/t/p/w780$it" },
-                contentDescription = episode.name,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(DarkGrey)
-            )
-            
-            // Overlay text
-            Column(
-                modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .padding(16.dp),
-                horizontalAlignment = Alignment.End
-            ) {
-                val seasonNumberStr = String.format("%02d", episode.season_number)
-                val episodeNumberStr = String.format("%02d", episode.episode_number)
-                Text(
-                    text = "S$seasonNumberStr | E$episodeNumberStr",
-                    color = Color.White,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 24.sp
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = episode.name,
-                    color = Color.White,
-                    fontSize = 16.sp
-                )
-            }
-        }
-        
-        Spacer(modifier = Modifier.height(16.dp))
-        
-        // Checkmark and Date
+    Column(modifier = Modifier.fillMaxWidth()) {
+        // Watched Toggle Section
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp),
             verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Box(
                 modifier = Modifier
                     .size(48.dp)
-                    .clip(androidx.compose.foundation.shape.CircleShape)
-                    .background(if (isWatched) Color(0xFF81C784) else Color.Transparent)
-                    .border(2.dp, if (isWatched) Color(0xFF81C784) else TextSecondary, androidx.compose.foundation.shape.CircleShape)
+                    .clip(androidx.compose.foundation.shape.RoundedCornerShape(8.dp))
+                    .background(if (isWatched) GoldYellow else DarkGrey)
                     .clickable { onToggleWatched() },
                 contentAlignment = Alignment.Center
             ) {
@@ -604,14 +571,13 @@ fun EpisodeDetailsContent(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(text = if (isWatched) "تمت المشاهدة" else "لم يُشاهد", color = TextSecondary, fontSize = 14.sp)
                 Spacer(modifier = Modifier.width(8.dp))
-                // Calendar and eye icon would go here (using text placeholders for simplicity or standard icons if available)
                 val date = episode.air_date ?: "غير معروف"
                 Text(text = date, color = TextSecondary, fontSize = 14.sp)
             }
         }
         
         Spacer(modifier = Modifier.height(24.dp))
-        Divider(color = DarkGrey)
+        HorizontalDivider(color = DarkGrey)
         
         // Where to watch
         Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
@@ -621,13 +587,12 @@ fun EpisodeDetailsContent(
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(text = "أين تُشاهد", color = TextPrimary, fontSize = 18.sp, fontWeight = FontWeight.Bold)
-                Icon(Icons.Default.Settings, contentDescription = "Settings", tint = TextPrimary, modifier = Modifier.size(20.dp))
             }
             Spacer(modifier = Modifier.height(16.dp))
             Text(text = ". غير متاح", color = TextSecondary, fontSize = 14.sp)
         }
         
-        Divider(color = DarkGrey)
+        HorizontalDivider(color = DarkGrey)
         
         // Episode Information
         Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
@@ -652,25 +617,6 @@ fun EpisodeDetailsContent(
                 fontSize = 14.sp,
                 lineHeight = 20.sp
             )
-        }
-        
-        Divider(color = DarkGrey)
-        
-        // Comments
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable { }
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Text(text = "التعليقات", color = TextPrimary, fontSize = 18.sp, fontWeight = FontWeight.Bold)
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(text = "865", color = TextSecondary, fontSize = 14.sp)
-                Spacer(modifier = Modifier.width(8.dp))
-                Icon(Icons.Default.ArrowBack, contentDescription = "More", tint = TextSecondary, modifier = Modifier.size(16.dp)) // Assuming RTL, arrow back points forward
-            }
         }
         
         Spacer(modifier = Modifier.height(32.dp))
