@@ -12,6 +12,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
+import com.example.data.remote.Genre
+
 sealed class ExploreUiState {
     object Idle : ExploreUiState()
     object Loading : ExploreUiState()
@@ -19,7 +21,11 @@ sealed class ExploreUiState {
         val results: List<MediaItem>,
         val trendingTvShows: List<MediaItem> = emptyList(),
         val trendingMovies: List<MediaItem> = emptyList(),
-        val upcomingTvShows: List<MediaItem> = emptyList()
+        val upcomingTvShows: List<MediaItem> = emptyList(),
+        val feedItems: List<MediaItem> = emptyList(),
+        val genres: List<Genre> = emptyList(),
+        val activityItems: List<MediaItem> = emptyList(),
+        val isLoadingMoreFeed: Boolean = false
     ) : ExploreUiState()
     data class Error(val message: String) : ExploreUiState()
 }
@@ -35,6 +41,9 @@ class ExploreViewModel(
     val searchQuery: StateFlow<String> = _searchQuery
 
     private var searchJob: Job? = null
+    
+    private var currentFeedPage = 1
+    private var isFeedLastPage = false
 
     init {
         loadDiscoverData()
@@ -47,20 +56,64 @@ class ExploreViewModel(
                 _uiState.value = ExploreUiState.Error("Missing TMDB API Key. Please add it to Secrets.")
                 return@launch
             }
-
             try {
-                val trendingTv = repository.getTrendingTvShows(apiKey).getOrNull()?.results ?: emptyList()
-                val trendingMovies = repository.getTrendingMovies(apiKey).getOrNull()?.results ?: emptyList()
-                val upcomingTv = repository.getUpcomingTvShows(apiKey).getOrNull()?.results ?: emptyList()
+                val trendingTv = repository.getTrendingTvShows(apiKey).getOrNull()?.results?.map { it.copy(media_type = "tv") } ?: emptyList()
+                val trendingMovies = repository.getTrendingMovies(apiKey).getOrNull()?.results?.map { it.copy(media_type = "movie") } ?: emptyList()
+                val upcomingTv = repository.getUpcomingTvShows(apiKey).getOrNull()?.results?.map { it.copy(media_type = "tv") } ?: emptyList()
+                
+                // For feed, mix popular tv and movies
+                val popularTv = repository.getPopularTvShows(apiKey, 1).getOrNull()?.results?.map { it.copy(media_type = "tv") } ?: emptyList()
+                val popularMovies = repository.getPopularMovies(apiKey, 1).getOrNull()?.results?.map { it.copy(media_type = "movie") } ?: emptyList()
+                val initialFeed = (popularTv + popularMovies).shuffled()
+                
+                // Genres
+                val tvGenres = repository.getTvGenres(apiKey).getOrNull()?.genres ?: emptyList()
+                val movieGenres = repository.getMovieGenres(apiKey).getOrNull()?.genres ?: emptyList()
+                val combinedGenres = (tvGenres + movieGenres).distinctBy { it.id }.take(15)
+                
+                // Activity (Top rated/popular used as mock activity)
+                val activityItems = (trendingTv.take(5) + trendingMovies.take(5)).shuffled()
                 
                 _uiState.value = ExploreUiState.Success(
                     results = emptyList(),
                     trendingTvShows = trendingTv,
                     trendingMovies = trendingMovies,
-                    upcomingTvShows = upcomingTv
+                    upcomingTvShows = upcomingTv,
+                    feedItems = initialFeed,
+                    genres = combinedGenres,
+                    activityItems = activityItems
                 )
             } catch (e: Exception) {
                 _uiState.value = ExploreUiState.Error(e.message ?: "Unknown error")
+            }
+        }
+    }
+    
+    fun loadMoreFeed() {
+        val currentState = _uiState.value
+        if (currentState is ExploreUiState.Success && !currentState.isLoadingMoreFeed && !isFeedLastPage) {
+            _uiState.value = currentState.copy(isLoadingMoreFeed = true)
+            
+            viewModelScope.launch {
+                val apiKey = BuildConfig.TMDB_API_KEY
+                try {
+                    currentFeedPage++
+                    val moreTv = repository.getPopularTvShows(apiKey, currentFeedPage).getOrNull()?.results?.map { it.copy(media_type = "tv") } ?: emptyList()
+                    val moreMovies = repository.getPopularMovies(apiKey, currentFeedPage).getOrNull()?.results?.map { it.copy(media_type = "movie") } ?: emptyList()
+                    
+                    if (moreTv.isEmpty() && moreMovies.isEmpty()) {
+                        isFeedLastPage = true
+                    }
+                    
+                    val moreFeed = (moreTv + moreMovies).shuffled()
+                    
+                    _uiState.value = currentState.copy(
+                        feedItems = currentState.feedItems + moreFeed,
+                        isLoadingMoreFeed = false
+                    )
+                } catch (e: Exception) {
+                    _uiState.value = currentState.copy(isLoadingMoreFeed = false)
+                }
             }
         }
     }

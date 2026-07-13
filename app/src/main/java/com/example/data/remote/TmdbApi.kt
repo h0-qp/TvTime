@@ -20,13 +20,57 @@ interface TmdbApi {
     @GET("movie/upcoming")
     suspend fun getUpcomingMovies(
         @Query("api_key") apiKey: String,
-        @Query("language") language: String = "en-US"
+        @Query("language") language: String = "en-US",
+        @Query("page") page: Int = 1
     ): MediaResponse
 
     @GET("tv/on_the_air")
     suspend fun getUpcomingTvShows(
         @Query("api_key") apiKey: String,
+        @Query("language") language: String = "en-US",
+        @Query("page") page: Int = 1
+    ): MediaResponse
+
+    @GET("tv/popular")
+    suspend fun getPopularTvShows(
+        @Query("api_key") apiKey: String,
+        @Query("language") language: String = "en-US",
+        @Query("page") page: Int = 1
+    ): MediaResponse
+
+    @GET("movie/popular")
+    suspend fun getPopularMovies(
+        @Query("api_key") apiKey: String,
+        @Query("language") language: String = "en-US",
+        @Query("page") page: Int = 1
+    ): MediaResponse
+
+    @GET("genre/movie/list")
+    suspend fun getMovieGenres(
+        @Query("api_key") apiKey: String,
         @Query("language") language: String = "en-US"
+    ): GenreResponse
+
+    @GET("genre/tv/list")
+    suspend fun getTvGenres(
+        @Query("api_key") apiKey: String,
+        @Query("language") language: String = "en-US"
+    ): GenreResponse
+
+    @GET("discover/movie")
+    suspend fun discoverMovies(
+        @Query("api_key") apiKey: String,
+        @Query("language") language: String = "en-US",
+        @Query("with_genres") withGenres: String? = null,
+        @Query("page") page: Int = 1
+    ): MediaResponse
+
+    @GET("discover/tv")
+    suspend fun discoverTv(
+        @Query("api_key") apiKey: String,
+        @Query("language") language: String = "en-US",
+        @Query("with_genres") withGenres: String? = null,
+        @Query("page") page: Int = 1
     ): MediaResponse
 
     @GET("search/multi")
@@ -148,6 +192,10 @@ data class SimilarResponse(
 
 data class VideosResponse(
     val results: List<VideoItem>
+)
+
+data class GenreResponse(
+    val genres: List<Genre>
 )
 
 data class VideoItem(

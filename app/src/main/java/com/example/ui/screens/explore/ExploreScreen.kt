@@ -20,6 +20,7 @@ import androidx.compose.material.icons.filled.ArrowRight
 import androidx.compose.material.icons.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Tv
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Divider
@@ -58,6 +59,7 @@ import com.example.ui.theme.TrueBlack
 fun ExploreScreen(
     repository: MediaRepository,
     onNavigateToDetails: (String, Int) -> Unit,
+    onNavigateToDiscoverMore: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val viewModel: ExploreViewModel = viewModel(
@@ -121,10 +123,10 @@ fun ExploreScreen(
                 SearchResultsContent(uiState, onNavigateToDetails)
             } else {
                 when (selectedTab) {
-                    "اكتشف" -> DiscoverTabContent(uiState, onNavigateToDetails)
-                    "تغذية" -> FeedTabContent()
-                    "مجموعات" -> CollectionsTabContent()
-                    "نشاط" -> ActivityTabContent()
+                    "اكتشف" -> DiscoverTabContent(uiState, onNavigateToDetails, onNavigateToDiscoverMore)
+                    "تغذية" -> FeedTabContent(uiState, viewModel, onNavigateToDetails)
+                    "مجموعات" -> CollectionsTabContent(uiState)
+                    "نشاط" -> ActivityTabContent(uiState, onNavigateToDetails)
                 }
             }
         }
@@ -189,7 +191,7 @@ fun TabButton(title: String, isSelected: Boolean, onClick: () -> Unit) {
 }
 
 @Composable
-fun DiscoverTabContent(uiState: ExploreUiState, onNavigateToDetails: (String, Int) -> Unit) {
+fun DiscoverTabContent(uiState: ExploreUiState, onNavigateToDetails: (String, Int) -> Unit, onNavigateToDiscoverMore: () -> Unit) {
     when (uiState) {
         is ExploreUiState.Loading -> {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -208,13 +210,13 @@ fun DiscoverTabContent(uiState: ExploreUiState, onNavigateToDetails: (String, In
                 DiscoverSection(title = "البرامج الرائجة", items = uiState.trendingTvShows, onNavigateToDetails)
                 
                 Spacer(modifier = Modifier.height(16.dp))
-                BrowseAllButton("تصفح جميع البرامج")
+                BrowseAllButton("تصفح جميع البرامج", onClick = onNavigateToDiscoverMore)
                 
                 Spacer(modifier = Modifier.height(32.dp))
                 DiscoverSection(title = "الأفلام الرائجة", items = uiState.trendingMovies, onNavigateToDetails)
                 
                 Spacer(modifier = Modifier.height(16.dp))
-                BrowseAllButton("تصفح جميع الأفلام")
+                BrowseAllButton("تصفح جميع الأفلام", onClick = onNavigateToDiscoverMore)
             }
         }
         else -> {}
@@ -283,13 +285,13 @@ fun DiscoverPosterCard(item: MediaItem, onNavigateToDetails: (String, Int) -> Un
 }
 
 @Composable
-fun BrowseAllButton(text: String) {
+fun BrowseAllButton(text: String, onClick: () -> Unit) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp)
             .background(GoldYellow, RoundedCornerShape(8.dp))
-            .clickable { }
+            .clickable { onClick() }
             .padding(vertical = 16.dp, horizontal = 16.dp)
     ) {
         Row(
@@ -309,38 +311,42 @@ fun BrowseAllButton(text: String) {
 }
 
 @Composable
-fun FeedTabContent() {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 16.dp, vertical = 8.dp)
-    ) {
-        FeedCard(
-            title = "Here It All Begins (2020)",
-            subtitle = "6 موسم/مواسم • TF1",
-            description = "Maxime, Rose and Antoine immerse themselves in the life of a school that will train the future big names in...",
-            imageRes = "https://image.tmdb.org/t/p/w780/kI20F9W7EIf9m2IqBntY769m0W2.jpg",
-            hasPlayButton = false
-        )
-        Spacer(modifier = Modifier.height(16.dp))
-        FeedCard(
-            title = "Crime 101",
-            subtitle = "2h 23m • جريمة, دراما",
-            description = "When an elusive thief whose high-stakes heists unfold along the iconic 101 freeway in Los Angeles e...",
-            imageRes = "https://image.tmdb.org/t/p/w780/jYl0U8jEENMEslEXcmpCG4FzD8t.jpg", // Mock image path for Chris Hemsworth
-            hasPlayButton = true
-        )
+fun FeedTabContent(uiState: ExploreUiState, viewModel: ExploreViewModel, onNavigateToDetails: (String, Int) -> Unit) {
+    if (uiState is ExploreUiState.Success) {
+        val feedItems = uiState.feedItems
+        
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
+        ) {
+            items(feedItems.size) { index ->
+                val item = feedItems[index]
+                if (index == feedItems.size - 1 && !uiState.isLoadingMoreFeed) {
+                    viewModel.loadMoreFeed()
+                }
+                
+                FeedCard(item, onNavigateToDetails)
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+            if (uiState.isLoadingMoreFeed) {
+                item {
+                    Box(modifier = Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator(color = GoldYellow)
+                    }
+                }
+            }
+        }
     }
 }
 
 @Composable
-fun FeedCard(title: String, subtitle: String, description: String, imageRes: String, hasPlayButton: Boolean) {
+fun FeedCard(item: MediaItem, onNavigateToDetails: (String, Int) -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
             .background(Color(0xFF1E1E1E))
+            .clickable { onNavigateToDetails(item.media_type ?: "tv", item.id) }
     ) {
         Box(
             modifier = Modifier
@@ -348,7 +354,7 @@ fun FeedCard(title: String, subtitle: String, description: String, imageRes: Str
                 .height(200.dp)
         ) {
             AsyncImage(
-                model = imageRes,
+                model = "https://image.tmdb.org/t/p/w780${item.backdrop_path ?: item.poster_path}",
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize().background(DarkGrey)
@@ -371,7 +377,7 @@ fun FeedCard(title: String, subtitle: String, description: String, imageRes: Str
                 Icon(Icons.Default.Add, contentDescription = "Add", tint = GoldYellow)
             }
             
-            if (hasPlayButton) {
+            if (item.media_type == "movie") {
                 Box(
                     modifier = Modifier
                         .align(Alignment.Center)
@@ -390,15 +396,19 @@ fun FeedCard(title: String, subtitle: String, description: String, imageRes: Str
                     .padding(16.dp),
                 horizontalAlignment = Alignment.End
             ) {
-                Text(text = title, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 20.sp)
-                Text(text = subtitle, color = TextSecondary, fontSize = 14.sp)
+                Text(text = item.title ?: item.name ?: "", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 20.sp)
+                val type = if (item.media_type == "movie") "فيلم" else "مسلسل"
+                val date = (item.release_date ?: item.first_air_date ?: "").take(4)
+                Text(text = "$type • $date", color = TextSecondary, fontSize = 14.sp)
             }
         }
         
         Text(
-            text = description,
+            text = item.overview ?: "",
             color = TextPrimary,
             fontSize = 14.sp,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
             modifier = Modifier.padding(16.dp),
             textAlign = androidx.compose.ui.text.style.TextAlign.Right
         )
@@ -406,58 +416,49 @@ fun FeedCard(title: String, subtitle: String, description: String, imageRes: Str
 }
 
 @Composable
-fun CollectionsTabContent() {
-    data class CollectionItem(val title: String, val followers: String, val comments: String, val imageRes: String)
-    val collections = listOf(
-        CollectionItem("Anime", "55.5 ألف", "2.87 ألف", "https://image.tmdb.org/t/p/w300/yZdYKtcxbsF3gX6NtcBfW8M8zIe.jpg"),
-        CollectionItem("K-Drama", "47.8 ألف", "2.51 ألف", "https://image.tmdb.org/t/p/w300/qcpC9lv6VLL4Zw45EveYELyje1w.jpg"),
-        CollectionItem("Horror", "30.6 ألف", "1.14 ألف", "https://image.tmdb.org/t/p/w300/50L3iN0OOSnUKOONrV1Fj2P2665.jpg"),
-        CollectionItem("Sitcoms", "25.4 ألف", "858", "https://image.tmdb.org/t/p/w300/f496cm9enuEsZkSPzCwnTESEK5s.jpg"),
-        CollectionItem("Harry Potter", "21.2 ألف", "571", "https://image.tmdb.org/t/p/w300/wuMc08IPKEbQ08W32EwN0kFqS7.jpg"),
-        CollectionItem("Rom-Com", "12.1 ألف", "373", "https://image.tmdb.org/t/p/w300/i91T5vEEtZ2kZnt1YvYlI0D9uS1.jpg"),
-        CollectionItem("Disney", "8.92 ألف", "310", "https://image.tmdb.org/t/p/w300/qX1eZ4G5yA6Ea9QZ6V07NTh5a8v.jpg"),
-        CollectionItem("Star Wars", "6.5 ألف", "241", "https://image.tmdb.org/t/p/w300/oEzzA7yX4uV7k0GlaL2JtXpIqZ0.jpg")
-    )
-    
-    Column(modifier = Modifier.fillMaxSize()) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(text = "فرز حسب", color = TextSecondary, fontSize = 14.sp)
-                Spacer(modifier = Modifier.width(4.dp))
-                Text(text = "مشهور", color = Color(0xFF64B5F6), fontSize = 14.sp)
-            }
-            Icon(Icons.Default.ArrowBack, contentDescription = "Help", tint = TextSecondary, modifier = Modifier.size(18.dp)) // Placeholder for question mark
-        }
+fun CollectionsTabContent(uiState: ExploreUiState) {
+    if (uiState is ExploreUiState.Success) {
+        val genres = uiState.genres
         
-        LazyColumn(
-            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            items(collections) { item ->
-                CollectionCard(item)
+        Column(modifier = Modifier.fillMaxSize()) {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(text = "فرز حسب", color = TextSecondary, fontSize = 14.sp)
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(text = "مشهور", color = Color(0xFF64B5F6), fontSize = 14.sp)
+                }
+                Icon(Icons.Default.ArrowBack, contentDescription = "Help", tint = TextSecondary, modifier = Modifier.size(18.dp)) // Placeholder for question mark
+            }
+            
+            LazyColumn(
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                items(genres) { item ->
+                    CollectionCard(item)
+                }
             }
         }
     }
 }
 
 @Composable
-fun CollectionCard(item: Any) {
-    // Reflection used to bypass type checking since we defined data class locally
-    val title = item.javaClass.getMethod("getTitle").invoke(item) as String
-    val followers = item.javaClass.getMethod("getFollowers").invoke(item) as String
-    val comments = item.javaClass.getMethod("getComments").invoke(item) as String
-    val imageRes = item.javaClass.getMethod("getImageRes").invoke(item) as String
+fun CollectionCard(genre: com.example.data.remote.Genre) {
+    // Generate a pseudo-random follower and comment count based on genre id
+    val followers = "${(genre.id % 50) + 10}.${genre.id % 9} ألف"
+    val comments = "${(genre.id % 5) + 1}.${genre.id % 9} ألف"
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .height(80.dp)
             .clip(RoundedCornerShape(8.dp))
-            .background(Color(0xFF151515)),
+            .background(Color(0xFF151515))
+            .clickable { },
         verticalAlignment = Alignment.CenterVertically
     ) {
         // Details
@@ -466,7 +467,7 @@ fun CollectionCard(item: Any) {
             horizontalAlignment = Alignment.End,
             verticalArrangement = Arrangement.Center
         ) {
-            Text(text = title, color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+            Text(text = genre.name, color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
             Spacer(modifier = Modifier.height(4.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(text = comments, color = TextPrimary, fontSize = 12.sp)
@@ -480,48 +481,42 @@ fun CollectionCard(item: Any) {
         }
         
         // Image
-        AsyncImage(
-            model = imageRes,
-            contentDescription = null,
-            contentScale = ContentScale.Crop,
-            modifier = Modifier.width(80.dp).fillMaxHeight().background(DarkGrey)
-        )
+        Box(
+            modifier = Modifier.width(80.dp).fillMaxHeight().background(DarkGrey),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(Icons.Default.Tv, contentDescription = null, tint = TextSecondary)
+        }
     }
 }
 
 @Composable
-fun ActivityTabContent() {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 16.dp, vertical = 8.dp)
-    ) {
-        ActivityCard(
-            title = "JoJo's Bizarre Adventure (2012)",
-            subtitle = "6 موسم/مواسم • Netflix",
-            watchedBy = "+622 ألف",
-            imageRes = "https://image.tmdb.org/t/p/w780/6xS53F6v4O2P9QyZ4C6N6gO6hM3.jpg",
-            hasPlayButton = false
-        )
-        Spacer(modifier = Modifier.height(16.dp))
-        ActivityCard(
-            title = "Terminator 2: Judgment Day",
-            subtitle = "2h 17m • حركة, Science Fiction, إثارة",
-            watchedBy = "+333 ألف",
-            imageRes = "https://image.tmdb.org/t/p/w780/xKbVWqO52q0vG1rXq3d2lK8YxXy.jpg",
-            hasPlayButton = true
-        )
+fun ActivityTabContent(uiState: ExploreUiState, onNavigateToDetails: (String, Int) -> Unit) {
+    if (uiState is ExploreUiState.Success) {
+        val activityItems = uiState.activityItems
+        
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 16.dp, vertical = 8.dp)
+        ) {
+            activityItems.forEach { item ->
+                ActivityCard(item, onNavigateToDetails)
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+        }
     }
 }
 
 @Composable
-fun ActivityCard(title: String, subtitle: String, watchedBy: String, imageRes: String, hasPlayButton: Boolean) {
+fun ActivityCard(item: MediaItem, onNavigateToDetails: (String, Int) -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
             .background(Color(0xFF1E1E1E))
+            .clickable { onNavigateToDetails(item.media_type ?: "tv", item.id) }
     ) {
         Box(
             modifier = Modifier
@@ -529,7 +524,7 @@ fun ActivityCard(title: String, subtitle: String, watchedBy: String, imageRes: S
                 .height(200.dp)
         ) {
             AsyncImage(
-                model = imageRes,
+                model = "https://image.tmdb.org/t/p/w780${item.backdrop_path ?: item.poster_path}",
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize().background(DarkGrey)
@@ -552,7 +547,7 @@ fun ActivityCard(title: String, subtitle: String, watchedBy: String, imageRes: S
                 Icon(Icons.Default.Add, contentDescription = "Add", tint = GoldYellow)
             }
             
-            if (hasPlayButton) {
+            if (item.media_type == "movie") {
                 Box(
                     modifier = Modifier
                         .align(Alignment.Center)
@@ -571,11 +566,15 @@ fun ActivityCard(title: String, subtitle: String, watchedBy: String, imageRes: S
                     .padding(16.dp),
                 horizontalAlignment = Alignment.End
             ) {
-                Text(text = title, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 20.sp)
-                Text(text = subtitle, color = TextSecondary, fontSize = 14.sp)
+                Text(text = item.title ?: item.name ?: "", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 20.sp)
+                val type = if (item.media_type == "movie") "فيلم" else "مسلسل"
+                val date = (item.release_date ?: item.first_air_date ?: "").take(4)
+                Text(text = "$type • $date", color = TextSecondary, fontSize = 14.sp)
             }
         }
         
+        // Watched By section
+        val watchedCount = ((item.vote_average ?: 0.0) * 100).toInt() + 100
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -587,10 +586,12 @@ fun ActivityCard(title: String, subtitle: String, watchedBy: String, imageRes: S
             Column(horizontalAlignment = Alignment.End) {
                 Text(text = "تمت مشاهدته بواسطة", color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
                 Spacer(modifier = Modifier.height(4.dp))
-                Text(text = watchedBy, color = TextSecondary, fontSize = 12.sp)
+                Text(text = "+$watchedCount ألف", color = TextSecondary, fontSize = 12.sp)
             }
             Spacer(modifier = Modifier.width(16.dp))
-            Box(modifier = Modifier.size(40.dp).background(TrueBlack, CircleShape)) // Profile placeholder
+            Box(modifier = Modifier.size(40.dp).background(TrueBlack, CircleShape)) {
+                Icon(Icons.Default.AccountCircle, contentDescription = null, tint = TextSecondary, modifier = Modifier.align(Alignment.Center))
+            }
         }
     }
 }

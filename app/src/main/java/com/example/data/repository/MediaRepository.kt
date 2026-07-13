@@ -62,6 +62,60 @@ class MediaRepository(
         }
     }
 
+    suspend fun getPopularTvShows(apiKey: String, page: Int = 1): Result<MediaResponse> {
+        return try {
+            val response = tmdbApi.getPopularTvShows(apiKey, page = page)
+            Result.success(response)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun getPopularMovies(apiKey: String, page: Int = 1): Result<MediaResponse> {
+        return try {
+            val response = tmdbApi.getPopularMovies(apiKey, page = page)
+            Result.success(response)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun getMovieGenres(apiKey: String): Result<com.example.data.remote.GenreResponse> {
+        return try {
+            val response = tmdbApi.getMovieGenres(apiKey)
+            Result.success(response)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun getTvGenres(apiKey: String): Result<com.example.data.remote.GenreResponse> {
+        return try {
+            val response = tmdbApi.getTvGenres(apiKey)
+            Result.success(response)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun discoverMovies(apiKey: String, withGenres: String? = null, page: Int = 1): Result<MediaResponse> {
+        return try {
+            val response = tmdbApi.discoverMovies(apiKey, withGenres = withGenres, page = page)
+            Result.success(response)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun discoverTv(apiKey: String, withGenres: String? = null, page: Int = 1): Result<MediaResponse> {
+        return try {
+            val response = tmdbApi.discoverTv(apiKey, withGenres = withGenres, page = page)
+            Result.success(response)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     suspend fun searchMulti(apiKey: String, query: String): Result<MediaResponse> {
         return try {
             val response = tmdbApi.searchMulti(apiKey, query)

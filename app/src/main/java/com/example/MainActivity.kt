@@ -148,8 +148,21 @@ fun TrackVerseApp(appContainer: com.example.data.AppContainer) {
                     repository = appContainer.mediaRepository,
                     onNavigateToDetails = { mediaType, mediaId ->
                         navController.navigate("details/$mediaType/$mediaId")
+                    },
+                    onNavigateToDiscoverMore = {
+                        navController.navigate("discover_more")
                     }
                 ) 
+            }
+            
+            composable("discover_more") {
+                com.example.ui.screens.explore.DiscoverMoreScreen(
+                    repository = appContainer.mediaRepository,
+                    onNavigateBack = { navController.popBackStack() },
+                    onNavigateToDetails = { mediaType, mediaId ->
+                        navController.navigate("details/$mediaType/$mediaId")
+                    }
+                )
             }
             composable(Screen.Profile.route) { 
                 com.example.ui.screens.profile.ProfileScreen(
