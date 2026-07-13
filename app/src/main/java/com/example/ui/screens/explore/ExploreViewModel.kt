@@ -15,7 +15,12 @@ import kotlinx.coroutines.launch
 sealed class ExploreUiState {
     object Idle : ExploreUiState()
     object Loading : ExploreUiState()
-    data class Success(val results: List<MediaItem>) : ExploreUiState()
+    data class Success(
+        val results: List<MediaItem>,
+        val trendingTvShows: List<MediaItem> = emptyList(),
+        val trendingMovies: List<MediaItem> = emptyList(),
+        val upcomingTvShows: List<MediaItem> = emptyList()
+    ) : ExploreUiState()
     data class Error(val message: String) : ExploreUiState()
 }
 
@@ -23,7 +28,7 @@ class ExploreViewModel(
     private val repository: MediaRepository
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow<ExploreUiState>(ExploreUiState.Idle)
+    private val _uiState = MutableStateFlow<ExploreUiState>(ExploreUiState.Loading)
     val uiState: StateFlow<ExploreUiState> = _uiState
     
     private val _searchQuery = MutableStateFlow("")
@@ -31,11 +36,40 @@ class ExploreViewModel(
 
     private var searchJob: Job? = null
 
+    init {
+        loadDiscoverData()
+    }
+
+    private fun loadDiscoverData() {
+        viewModelScope.launch {
+            val apiKey = BuildConfig.TMDB_API_KEY
+            if (apiKey.isEmpty() || apiKey == "MY_TMDB_API_KEY") {
+                _uiState.value = ExploreUiState.Error("Missing TMDB API Key. Please add it to Secrets.")
+                return@launch
+            }
+
+            try {
+                val trendingTv = repository.getTrendingTvShows(apiKey).getOrNull()?.results ?: emptyList()
+                val trendingMovies = repository.getTrendingMovies(apiKey).getOrNull()?.results ?: emptyList()
+                val upcomingTv = repository.getUpcomingTvShows(apiKey).getOrNull()?.results ?: emptyList()
+                
+                _uiState.value = ExploreUiState.Success(
+                    results = emptyList(),
+                    trendingTvShows = trendingTv,
+                    trendingMovies = trendingMovies,
+                    upcomingTvShows = upcomingTv
+                )
+            } catch (e: Exception) {
+                _uiState.value = ExploreUiState.Error(e.message ?: "Unknown error")
+            }
+        }
+    }
+
     fun updateSearchQuery(query: String) {
         _searchQuery.value = query
         searchJob?.cancel()
         if (query.isBlank()) {
-            _uiState.value = ExploreUiState.Idle
+            loadDiscoverData()
             return
         }
         
@@ -46,10 +80,11 @@ class ExploreViewModel(
     }
 
     private suspend fun performSearch(query: String) {
+        val currentState = _uiState.value
         _uiState.value = ExploreUiState.Loading
         val apiKey = BuildConfig.TMDB_API_KEY
         if (apiKey.isEmpty() || apiKey == "MY_TMDB_API_KEY") {
-            _uiState.value = ExploreUiState.Error("Missing TMDB API Key. Please add it to Secrets.")
+            _uiState.value = ExploreUiState.Error("Missing TMDB API Key.")
             return
         }
         val result = repository.searchMulti(apiKey, query)
@@ -57,7 +92,11 @@ class ExploreViewModel(
             val filteredResults = response.results.filter { 
                 it.media_type == "tv" || it.media_type == "movie" 
             }
-            _uiState.value = ExploreUiState.Success(filteredResults)
+            if (currentState is ExploreUiState.Success) {
+                _uiState.value = currentState.copy(results = filteredResults)
+            } else {
+                _uiState.value = ExploreUiState.Success(results = filteredResults)
+            }
         }.onFailure { exception ->
             _uiState.value = ExploreUiState.Error(exception.message ?: "Unknown error occurred")
         }
