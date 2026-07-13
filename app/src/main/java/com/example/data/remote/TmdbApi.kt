@@ -119,7 +119,8 @@ data class Episode(
     val season_number: Int,
     val overview: String? = null,
     val air_date: String? = null,
-    val still_path: String?
+    val still_path: String?,
+    val vote_average: Double? = null
 )
 
 data class SeasonDetails(

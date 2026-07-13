@@ -57,7 +57,14 @@ fun DetailsScreen(
             TopAppBar(
                 title = { },
                 navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
+                    IconButton(onClick = {
+                        val state = uiState
+                        if (state is DetailsUiState.Success && state.selectedEpisodeDetails != null) {
+                            viewModel.selectEpisode(null)
+                        } else {
+                            onNavigateBack()
+                        }
+                    }) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = TextPrimary)
                     }
                 },
@@ -65,6 +72,27 @@ fun DetailsScreen(
                     containerColor = TrueBlack
                 )
             )
+        },
+        bottomBar = {
+            if (uiState is DetailsUiState.Success) {
+                val state = uiState as DetailsUiState.Success
+                if (!state.isInWatchlist && state.selectedEpisodeDetails == null) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(GoldYellow)
+                            .clickable { viewModel.toggleWatchlist() }
+                            .padding(16.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.Add, contentDescription = null, tint = TrueBlack)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("إضافة مسلسل", color = TrueBlack, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                        }
+                    }
+                }
+            }
         },
         containerColor = TrueBlack
     ) { innerPadding ->
@@ -90,15 +118,23 @@ fun DetailsScreen(
                     )
                 }
                 is DetailsUiState.Success -> {
-                    val item = state.mediaItem
-                    val title = item.name ?: item.title ?: "Unknown"
-                    val date = item.first_air_date?.take(4) ?: item.release_date?.take(4) ?: ""
-                    
-                    Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .verticalScroll(rememberScrollState())
-                    ) {
+                    if (state.selectedEpisodeDetails != null) {
+                        EpisodeDetailsContent(
+                            episode = state.selectedEpisodeDetails,
+                            isWatched = state.firestoreItem?.watchedEpisodes?.contains("S${state.selectedEpisodeDetails.season_number}E${state.selectedEpisodeDetails.episode_number}") == true,
+                            onToggleWatched = { viewModel.toggleEpisode(state.selectedEpisodeDetails.season_number, state.selectedEpisodeDetails.episode_number) },
+                            showTitle = state.mediaItem.name ?: state.mediaItem.title ?: "Unknown"
+                        )
+                    } else {
+                        val item = state.mediaItem
+                        val title = item.name ?: item.title ?: "Unknown"
+                        val date = item.first_air_date?.take(4) ?: item.release_date?.take(4) ?: ""
+                        
+                        Column(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .verticalScroll(rememberScrollState())
+                        ) {
                         // Backdrop
                         AsyncImage(
                             model = "https://image.tmdb.org/t/p/w780${item.backdrop_path ?: item.poster_path}",
@@ -198,15 +234,53 @@ fun DetailsScreen(
                                                     .padding(vertical = 8.dp)
                                                     .clip(RoundedCornerShape(8.dp))
                                                     .background(DarkGrey)
-                                                    .padding(12.dp),
+                                                    .clickable { viewModel.selectEpisode(episode) },
                                                 verticalAlignment = Alignment.CenterVertically
                                             ) {
+                                                // Image on the right (assuming RTL)
+                                                AsyncImage(
+                                                    model = episode.still_path?.let { "https://image.tmdb.org/t/p/w300$it" },
+                                                    contentDescription = episode.name,
+                                                    contentScale = ContentScale.Crop,
+                                                    modifier = Modifier
+                                                        .width(100.dp)
+                                                        .height(70.dp)
+                                                        .background(Color.DarkGray)
+                                                )
+                                                
+                                                Spacer(modifier = Modifier.width(16.dp))
+                                                
+                                                // Details in Middle
+                                                Column(modifier = Modifier.weight(1f).padding(vertical = 12.dp)) {
+                                                    val seasonNumberStr = String.format("%02d", episode.season_number)
+                                                    val episodeNumberStr = String.format("%02d", episode.episode_number)
+                                                    Text(
+                                                        text = "S$seasonNumberStr | E$episodeNumberStr",
+                                                        color = TextPrimary,
+                                                        fontWeight = FontWeight.Bold,
+                                                        fontSize = 16.sp
+                                                    )
+                                                    Spacer(modifier = Modifier.height(4.dp))
+                                                    Text(
+                                                        text = episode.name,
+                                                        color = TextSecondary,
+                                                        fontSize = 12.sp,
+                                                        lineHeight = 16.sp,
+                                                        maxLines = 1,
+                                                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                                                    )
+                                                }
+                                                
+                                                Spacer(modifier = Modifier.width(16.dp))
+                                                
+                                                // Checkmark on the left (assuming RTL)
                                                 Box(
                                                     modifier = Modifier
+                                                        .padding(end = 16.dp)
                                                         .size(32.dp)
-                                                        .clip(RoundedCornerShape(8.dp))
-                                                        .background(if (isWatched) GoldYellow else Color.Transparent)
-                                                        .border(2.dp, if (isWatched) GoldYellow else TextSecondary, RoundedCornerShape(8.dp))
+                                                        .clip(androidx.compose.foundation.shape.CircleShape)
+                                                        .background(if (isWatched) Color(0xFF81C784) else Color.Transparent)
+                                                        .border(2.dp, if (isWatched) Color(0xFF81C784) else TextSecondary, androidx.compose.foundation.shape.CircleShape)
                                                         .clickable { 
                                                             if (state.isInWatchlist) {
                                                                 viewModel.toggleEpisode(episode.season_number, episode.episode_number)
@@ -218,24 +292,6 @@ fun DetailsScreen(
                                                         Icon(Icons.Default.Check, contentDescription = "Watched", tint = TrueBlack, modifier = Modifier.size(20.dp))
                                                     }
                                                 }
-                                                
-                                                Spacer(modifier = Modifier.width(16.dp))
-                                                
-                                                Column(modifier = Modifier.weight(1f)) {
-                                                    Text(
-                                                        text = "${episode.episode_number}. ${episode.name}",
-                                                        color = TextPrimary,
-                                                        fontWeight = FontWeight.Bold,
-                                                        fontSize = 16.sp
-                                                    )
-                                                    Spacer(modifier = Modifier.height(4.dp))
-                                                    Text(
-                                                        text = episode.overview.orEmpty().take(100).let { if (it.length == 100) "$it..." else it }.ifEmpty { "لا توجد قصة للحلقة." },
-                                                        color = TextSecondary,
-                                                        fontSize = 12.sp,
-                                                        lineHeight = 16.sp
-                                                    )
-                                                }
                                             }
                                         }
                                     }
@@ -244,6 +300,7 @@ fun DetailsScreen(
                                 }
                             }
                         }
+                    }
                     }
                 }
             }
@@ -415,6 +472,157 @@ fun AboutTabContent(item: MediaItem) {
                         modifier = Modifier.width(120.dp).height(180.dp).clip(RoundedCornerShape(8.dp)).background(DarkGrey)
                     )
                 }
+            }
+        }
+        
+        Spacer(modifier = Modifier.height(32.dp))
+    }
+}
+
+@Composable
+fun EpisodeDetailsContent(
+    episode: com.example.data.remote.Episode,
+    isWatched: Boolean,
+    onToggleWatched: () -> Unit,
+    showTitle: String
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+    ) {
+        // Image with Text overlay
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(250.dp)
+        ) {
+            AsyncImage(
+                model = episode.still_path?.let { "https://image.tmdb.org/t/p/w780$it" },
+                contentDescription = episode.name,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(DarkGrey)
+            )
+            
+            // Overlay text
+            Column(
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(16.dp),
+                horizontalAlignment = Alignment.End
+            ) {
+                val seasonNumberStr = String.format("%02d", episode.season_number)
+                val episodeNumberStr = String.format("%02d", episode.episode_number)
+                Text(
+                    text = "S$seasonNumberStr | E$episodeNumberStr",
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 24.sp
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = episode.name,
+                    color = Color.White,
+                    fontSize = 16.sp
+                )
+            }
+        }
+        
+        Spacer(modifier = Modifier.height(16.dp))
+        
+        // Checkmark and Date
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(androidx.compose.foundation.shape.CircleShape)
+                    .background(if (isWatched) Color(0xFF81C784) else Color.Transparent)
+                    .border(2.dp, if (isWatched) Color(0xFF81C784) else TextSecondary, androidx.compose.foundation.shape.CircleShape)
+                    .clickable { onToggleWatched() },
+                contentAlignment = Alignment.Center
+            ) {
+                if (isWatched) {
+                    Icon(Icons.Default.Check, contentDescription = "Watched", tint = TrueBlack, modifier = Modifier.size(28.dp))
+                }
+            }
+            
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(text = if (isWatched) "تمت المشاهدة" else "لم يُشاهد", color = TextSecondary, fontSize = 14.sp)
+                Spacer(modifier = Modifier.width(8.dp))
+                // Calendar and eye icon would go here (using text placeholders for simplicity or standard icons if available)
+                val date = episode.air_date ?: "غير معروف"
+                Text(text = date, color = TextSecondary, fontSize = 14.sp)
+            }
+        }
+        
+        Spacer(modifier = Modifier.height(24.dp))
+        Divider(color = DarkGrey)
+        
+        // Where to watch
+        Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(text = "أين تُشاهد", color = TextPrimary, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                Icon(Icons.Default.Settings, contentDescription = "Settings", tint = TextPrimary, modifier = Modifier.size(20.dp))
+            }
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(text = ". غير متاح", color = TextSecondary, fontSize = 14.sp)
+        }
+        
+        Divider(color = DarkGrey)
+        
+        // Episode Information
+        Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+            Text(text = "معلومات الحلقة", color = TextPrimary, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+            Spacer(modifier = Modifier.height(16.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                val rating = episode.vote_average?.let { String.format("%.1f", it) } ?: "0.0"
+                Text(text = "$rating/10", color = TextPrimary, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                Spacer(modifier = Modifier.width(4.dp))
+                repeat(5) {
+                    Icon(Icons.Default.Star, contentDescription = null, tint = GoldYellow, modifier = Modifier.size(14.dp))
+                }
+            }
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(
+                text = episode.overview.orEmpty().ifEmpty { "لا توجد قصة متاحة للحلقة." },
+                color = TextPrimary,
+                fontSize = 14.sp,
+                lineHeight = 20.sp
+            )
+        }
+        
+        Divider(color = DarkGrey)
+        
+        // Comments
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { }
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(text = "التعليقات", color = TextPrimary, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(text = "865", color = TextSecondary, fontSize = 14.sp)
+                Spacer(modifier = Modifier.width(8.dp))
+                Icon(Icons.Default.ArrowBack, contentDescription = "More", tint = TextSecondary, modifier = Modifier.size(16.dp)) // Assuming RTL, arrow back points forward
             }
         }
         

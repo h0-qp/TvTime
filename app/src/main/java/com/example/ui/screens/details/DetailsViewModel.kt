@@ -21,7 +21,8 @@ sealed class DetailsUiState {
         val firestoreItem: FirestoreMediaItem? = null,
         val selectedSeasonDetails: com.example.data.remote.SeasonDetails? = null,
         val selectedSeasonNumber: Int? = null,
-        val isLoadingSeason: Boolean = false
+        val isLoadingSeason: Boolean = false,
+        val selectedEpisodeDetails: com.example.data.remote.Episode? = null
     ) : DetailsUiState()
     data class Error(val message: String) : DetailsUiState()
 }
@@ -111,6 +112,13 @@ class DetailsViewModel(
         val apiKey = BuildConfig.TMDB_API_KEY
         if (apiKey.isEmpty() || apiKey == "MY_TMDB_API_KEY") return
         fetchSeasonDetails(seasonNumber, apiKey)
+    }
+
+    fun selectEpisode(episode: com.example.data.remote.Episode?) {
+        val currentState = _uiState.value
+        if (currentState is DetailsUiState.Success) {
+            _uiState.value = currentState.copy(selectedEpisodeDetails = episode)
+        }
     }
 
     fun toggleEpisode(seasonNumber: Int, episodeNumber: Int) {
