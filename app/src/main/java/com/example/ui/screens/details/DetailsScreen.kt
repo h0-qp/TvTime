@@ -68,9 +68,53 @@ fun DetailsScreen(
     val uiState by viewModel.uiState.collectAsState()
     var showBottomSheet by remember { mutableStateOf(false) }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    var showAddSuccess by remember { mutableStateOf(false) }
+
+    LaunchedEffect(showAddSuccess) {
+        if (showAddSuccess) {
+            kotlinx.coroutines.delay(2000)
+            showAddSuccess = false
+        }
+    }
 
     Scaffold(
-        containerColor = TrueBlack    ) { innerPadding ->
+        containerColor = TrueBlack,
+        bottomBar = {
+            if (uiState is DetailsUiState.Success) {
+                val state = uiState as DetailsUiState.Success
+                if (state.selectedEpisodeDetails == null) {
+                    val shouldShow = !state.isInWatchlist || showAddSuccess
+                    if (shouldShow) {
+                        val isSuccessState = state.isInWatchlist && showAddSuccess
+                        val backgroundColor = if (isSuccessState) TrueBlack else GoldYellow
+                        val textColor = if (isSuccessState) GoldYellow else TrueBlack
+                        val icon = if (isSuccessState) Icons.Default.Check else Icons.Default.Add
+                        val textStr = if (isSuccessState) "تمت الإضافة" else (if (mediaType == "tv") "إضافة مسلسل" else "إضافة فيلم")
+                        
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(backgroundColor)
+                                .clickable { 
+                                    if (!state.isInWatchlist) {
+                                        viewModel.toggleWatchlist()
+                                        showAddSuccess = true
+                                    }
+                                }
+                                .padding(16.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(icon, contentDescription = null, tint = textColor)
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(textStr, color = textColor, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    ) { innerPadding ->
         Box(
             modifier = modifier
                 .fillMaxSize()
@@ -110,9 +154,14 @@ fun DetailsScreen(
                                 .fillMaxSize()
                                 .verticalScroll(rememberScrollState())
                         ) {
-                        val hours = (item.runtime ?: 0) / 60
-                        val mins = (item.runtime ?: 0) % 60
-                        val durationStr = if (hours > 0) "${hours}h ${mins}m" else "${mins}m"
+                        val durationStr = if (mediaType == "tv") {
+                            val seasonCount = item.number_of_seasons ?: item.seasons?.count { it.season_number > 0 } ?: 0
+                            "$seasonCount موسم/مواسم"
+                        } else {
+                            val hours = (item.runtime ?: 0) / 60
+                            val mins = (item.runtime ?: 0) % 60
+                            if (hours > 0) "${hours}h ${mins}m" else "${mins}m"
+                        }
                         val genresStr = item.genres?.joinToString(", ") { it.name } ?: ""
 
                         // Backdrop with overlay
@@ -179,42 +228,45 @@ fun DetailsScreen(
                         }
                         
                         // Actions Row
-                        val isWatched = state.isInWatchlist // Reusing watchlist for watched state based on prompt
+                        val isWatched = state.firestoreItem?.isWatched == true
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 16.dp),
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            // Left Side (Right in LTR code, but since we use SpaceBetween, it will lay out based on layout direction. We'll manually order them or rely on Compose RTL support)
-                            // We will place them in LTR order: Checkmark (left), Eye (middle), Date (right). Wait, RTL layout places first item on the right.
-                            // The screenshot shows Date on the right. So Date is the first item in the Row.
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Icon(Icons.Default.DateRange, contentDescription = "Date", tint = TextSecondary, modifier = Modifier.size(16.dp))
                                 Spacer(modifier = Modifier.width(4.dp))
                                 Text(text = date, color = TextSecondary, fontSize = 14.sp)
                             }
                             
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(Icons.Outlined.Visibility, contentDescription = "Visibility", tint = TextSecondary, modifier = Modifier.size(16.dp))
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text(text = if (isWatched) "تمت المشاهدة" else "لم يُشاهد", color = TextSecondary, fontSize = 14.sp)
-                            }
-                            
-                            Box(
-                                modifier = Modifier
-                                    .size(48.dp)
-                                    .clip(androidx.compose.foundation.shape.CircleShape)
-                                    .background(if (isWatched) androidx.compose.ui.graphics.Color(0xFF4CAF50) else TrueBlack)
-                                    .border(1.dp, if (isWatched) androidx.compose.ui.graphics.Color(0xFF4CAF50) else TextSecondary, androidx.compose.foundation.shape.CircleShape)
-                                    .clickable { viewModel.toggleWatchlist() },
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Check,
-                                    contentDescription = "Watched",
-                                    tint = if (isWatched) TrueBlack else TextSecondary,
-                                    modifier = Modifier.size(24.dp)
-                                )
+                            if (mediaType == "movie") {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(Icons.Outlined.Visibility, contentDescription = "Visibility", tint = TextSecondary, modifier = Modifier.size(16.dp))
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(text = if (isWatched) "تمت المشاهدة" else "لم يُشاهد", color = TextSecondary, fontSize = 14.sp)
+                                }
+                                
+                                Box(
+                                    modifier = Modifier
+                                        .size(48.dp)
+                                        .clip(androidx.compose.foundation.shape.CircleShape)
+                                        .background(if (isWatched) androidx.compose.ui.graphics.Color(0xFF4CAF50) else TrueBlack)
+                                        .border(1.dp, if (isWatched) androidx.compose.ui.graphics.Color(0xFF4CAF50) else TextSecondary, androidx.compose.foundation.shape.CircleShape)
+                                        .clickable { 
+                                            if (state.isInWatchlist) {
+                                                viewModel.toggleMovieWatched() 
+                                            }
+                                        },
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Check,
+                                        contentDescription = "Watched",
+                                        tint = if (isWatched) TrueBlack else TextSecondary,
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                }
                             }
                         }
                         
@@ -222,7 +274,7 @@ fun DetailsScreen(
                             Spacer(modifier = Modifier.height(24.dp))
                             
                             var selectedTab by remember { mutableIntStateOf(0) }
-                            val tabs = if (mediaType == "tv") listOf("حول", "أكثر", "الحلقات") else listOf("حول", "أكثر")
+                            val tabs = if (mediaType == "tv") listOf("حول", "الحلقات") else listOf("حول", "أكثر")
 
                             TabRow(
                                 selectedTabIndex = selectedTab,
@@ -249,10 +301,10 @@ fun DetailsScreen(
                             if (selectedTab == 0) {
                                 // About Tab
                                 AboutTabContent(item = item)
-                            } else if (selectedTab == 1) {
-                                // More Tab
+                            } else if (selectedTab == 1 && mediaType != "tv") {
+                                // More Tab (Movies)
                                 MoreTabContent(item = item)
-                            } else if (selectedTab == 2) {
+                            } else if ((selectedTab == 1 && mediaType == "tv") || selectedTab == 2) {
                                 // Episodes Tab
                                 if (mediaType == "tv" && !item.seasons.isNullOrEmpty()) {
                                     LazyRow(

@@ -143,6 +143,20 @@ class DetailsViewModel(
         }
     }
 
+    fun toggleMovieWatched() {
+        val currentState = _uiState.value
+        if (currentState is DetailsUiState.Success) {
+            val firestoreItem = currentState.firestoreItem
+            if (firestoreItem != null && mediaType == "movie") {
+                viewModelScope.launch {
+                    firestoreRepository.addOrUpdateMedia(
+                        firestoreItem.copy(isWatched = !firestoreItem.isWatched)
+                    )
+                }
+            }
+        }
+    }
+
     fun toggleWatchlist() {
         val currentState = _uiState.value
         if (currentState is DetailsUiState.Success) {
