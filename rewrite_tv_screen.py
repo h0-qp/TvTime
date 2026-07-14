@@ -1,4 +1,9 @@
-package com.example.ui.screens.tvshows
+import re
+
+with open('app/src/main/java/com/example/ui/screens/tvshows/TvShowsScreen.kt', 'r') as f:
+    content = f.read()
+
+replacement = """package com.example.ui.screens.tvshows
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -473,3 +478,7 @@ fun NotStartedCard(
         )
     }
 }
+"""
+
+with open('app/src/main/java/com/example/ui/screens/tvshows/TvShowsScreen.kt', 'w') as f:
+    f.write(replacement)

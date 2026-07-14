@@ -144,12 +144,50 @@ class FirestoreRepository {
         val docId = "${showId}_S${seasonNumber}E${episodeNumber}"
         db.collection("users").document(uid).collection("watched_episodes").document(docId)
             .set(WatchedEpisode(showId, seasonNumber, episodeNumber, System.currentTimeMillis())).await()
+            
+        // Also update the FirestoreMediaItem's watchedEpisodes list
+        try {
+            val mediaRef = db.collection("users").document(uid).collection("media").document(showId)
+            val snapshot = mediaRef.get().await()
+            if (snapshot.exists()) {
+                val item = snapshot.toObject(FirestoreMediaItem::class.java)
+                if (item != null) {
+                    val currentList = item.watchedEpisodes.toMutableList()
+                    val epKey = "S${seasonNumber}E${episodeNumber}"
+                    if (!currentList.contains(epKey)) {
+                        currentList.add(epKey)
+                        mediaRef.update("watchedEpisodes", currentList).await()
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
     }
 
     suspend fun markEpisodeUnwatched(showId: String, seasonNumber: Int, episodeNumber: Int) {
         val uid = currentUserId ?: return
         val docId = "${showId}_S${seasonNumber}E${episodeNumber}"
         db.collection("users").document(uid).collection("watched_episodes").document(docId).delete().await()
+        
+        // Also update the FirestoreMediaItem's watchedEpisodes list
+        try {
+            val mediaRef = db.collection("users").document(uid).collection("media").document(showId)
+            val snapshot = mediaRef.get().await()
+            if (snapshot.exists()) {
+                val item = snapshot.toObject(FirestoreMediaItem::class.java)
+                if (item != null) {
+                    val currentList = item.watchedEpisodes.toMutableList()
+                    val epKey = "S${seasonNumber}E${episodeNumber}"
+                    if (currentList.contains(epKey)) {
+                        currentList.remove(epKey)
+                        mediaRef.update("watchedEpisodes", currentList).await()
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
     }
 
     fun observeUserMedia(): Flow<List<FirestoreMediaItem>> = callbackFlow {

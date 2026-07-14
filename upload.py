@@ -1,15 +1,9 @@
 import requests
-import sys
+import json
 
-def upload_to_gofile(file_path):
-    server_response = requests.get('https://api.gofile.io/servers')
-    server = server_response.json()['data']['servers'][0]['name']
-    
-    with open(file_path, 'rb') as f:
-        upload_response = requests.post(
-            f'https://{server}.gofile.io/contents/uploadfile',
-            files={'file': f}
-        )
-    return upload_response.json()['data']['downloadPage']
+file_path = "app/build/outputs/apk/release/app-release.apk"
 
-print(upload_to_gofile('app/build/outputs/apk/debug/app-debug.apk'))
+with open(file_path, "rb") as f:
+    response = requests.post('https://file.io', files={'file': f})
+    data = response.json()
+    print("Download URL:", data.get("link", "Error uploading to file.io"))

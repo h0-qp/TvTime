@@ -18,7 +18,15 @@ class TrackVerseApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
-        FirebaseApp.initializeApp(this)
+                var app = FirebaseApp.initializeApp(this)
+        if (app == null) {
+            val options = com.google.firebase.FirebaseOptions.Builder()
+                .setApplicationId("1:987873552497:android:5003fcf43a28487b2353d0")
+                .setApiKey("AIzaSyC-yfevZTtLf8lOp9D1Orsai-G4QugPNRQ")
+                .setProjectId("tvtime-9265c")
+                .build()
+            FirebaseApp.initializeApp(this, options)
+        }
         container = DefaultAppContainer(this)
         
         NotificationHelper.createNotificationChannel(this)

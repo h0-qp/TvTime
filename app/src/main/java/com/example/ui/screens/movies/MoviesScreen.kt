@@ -80,8 +80,16 @@ fun MoviesScreen(
                     Spacer(modifier = Modifier.height(3.dp))
                 }
             }
+            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.clickable { selectedTab = 2 }) {
+                Text("سجل المشاهدة", color = if (selectedTab == 2) TextPrimary else TextSecondary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                Spacer(modifier = Modifier.height(6.dp))
+                if (selectedTab == 2) {
+                    Box(modifier = Modifier.height(3.dp).width(50.dp).background(GoldYellow, RoundedCornerShape(1.5.dp)))
+                } else {
+                    Spacer(modifier = Modifier.height(3.dp))
+                }
+            }
         }
-
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             when (val state = uiState) {
                 is MoviesUiState.Loading -> {
@@ -96,7 +104,8 @@ fun MoviesScreen(
                 }
                 is MoviesUiState.Success -> {
                     if (selectedTab == 1) {
-                        if (state.watchlist.isEmpty()) {
+                        val unwatchedMovies = state.watchlist.filter { !it.isWatched }
+                        if (unwatchedMovies.isEmpty()) {
                             Text("قائمتك فارغة. ابحث عن أفلام لإضافتها!", color = TextSecondary)
                         } else {
                             LazyColumn(
@@ -107,7 +116,25 @@ fun MoviesScreen(
                                     SectionHeader("أفلامك")
                                 }
                                 
-                                items(state.watchlist) { movie ->
+                                items(unwatchedMovies) { movie ->
+                                    MovieWatchlistCard(movie, onNavigateToDetails)
+                                }
+                            }
+                        }
+                    } else if (selectedTab == 2) {
+                        val watchedMovies = state.watchlist.filter { it.isWatched }
+                        if (watchedMovies.isEmpty()) {
+                            Text("لم تشاهد أي أفلام بعد.", color = TextSecondary)
+                        } else {
+                            LazyColumn(
+                                modifier = Modifier.fillMaxSize(),
+                                contentPadding = PaddingValues(bottom = 16.dp)
+                            ) {
+                                item {
+                                    SectionHeader("سجل المشاهدة")
+                                }
+                                
+                                items(watchedMovies) { movie ->
                                     MovieWatchlistCard(movie, onNavigateToDetails)
                                 }
                             }

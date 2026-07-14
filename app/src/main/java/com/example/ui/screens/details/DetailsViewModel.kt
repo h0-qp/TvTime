@@ -121,25 +121,23 @@ class DetailsViewModel(
         }
     }
 
-    fun toggleEpisode(seasonNumber: Int, episodeNumber: Int) {
+        fun toggleEpisode(seasonNumber: Int, episodeNumber: Int) {
         val currentState = _uiState.value
         if (currentState is DetailsUiState.Success) {
             val firestoreItem = currentState.firestoreItem
-            val episodeKey = "S${seasonNumber}E${episodeNumber}"
             
             viewModelScope.launch {
                 if (firestoreItem != null) {
                     val currentWatched = firestoreItem.watchedEpisodes.toMutableList()
+                    val episodeKey = "S${seasonNumber}E${episodeNumber}"
                     if (currentWatched.contains(episodeKey)) {
-                        currentWatched.remove(episodeKey)
+                        firestoreRepository.markEpisodeUnwatched(currentState.mediaItem.id.toString(), seasonNumber, episodeNumber)
                     } else {
-                        currentWatched.add(episodeKey)
+                        firestoreRepository.markEpisodeWatched(currentState.mediaItem.id.toString(), seasonNumber, episodeNumber)
                     }
-                    firestoreRepository.addOrUpdateMedia(
-                        firestoreItem.copy(watchedEpisodes = currentWatched)
-                    )
                 } else {
                     val item = currentState.mediaItem
+                    val episodeKey = "S${seasonNumber}E${episodeNumber}"
                     firestoreRepository.addOrUpdateMedia(
                         FirestoreMediaItem(
                             id = item.id,
@@ -151,6 +149,10 @@ class DetailsViewModel(
                             addedAt = System.currentTimeMillis()
                         )
                     )
+                    firestoreRepository.markEpisodeWatched(item.id.toString(), seasonNumber, episodeNumber)
+                    if (mediaType == "tv") {
+                        firestoreRepository.addTvShowToWatchlist(item.id.toString())
+                    }
                 }
             }
         }

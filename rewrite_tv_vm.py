@@ -1,4 +1,9 @@
-package com.example.ui.screens.tvshows
+import re
+
+with open('app/src/main/java/com/example/ui/screens/tvshows/TvShowsViewModel.kt', 'r') as f:
+    content = f.read()
+
+replacement = """package com.example.ui.screens.tvshows
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -158,7 +163,7 @@ class TvShowsViewModel(
                             seasonNumber = ep.seasonNumber,
                             episodeNumber = ep.episodeNumber,
                             episodeName = "Episode ${ep.episodeNumber}", // Real name fetching can be complex
-                            watchedAt = ep.watchedAt
+                            watchedAt = ep.timestamp
                         ))
                     }
 
@@ -166,9 +171,7 @@ class TvShowsViewModel(
                     val lastWatched = showWatchedEps.last()
                     // Fetch season details if not cached
                     if (!seasonDetailsMap.containsKey("${show.showId}_${lastWatched.seasonNumber}")) {
-                        val seasonResult = repository.getSeasonDetails(apiKey, show.showId.toIntOrNull() ?: 0, lastWatched.seasonNumber)
-                        val seasonInfo = seasonResult.getOrNull()
-                        if (seasonInfo != null) {
+                        repository.getTvSeasonDetails(apiKey, show.showId.toIntOrNull() ?: 0, lastWatched.seasonNumber).getOrNull()?.let { seasonInfo ->
                             seasonDetailsMap["${show.showId}_${lastWatched.seasonNumber}"] = seasonInfo.episodes
                         }
                     }
@@ -177,7 +180,7 @@ class TvShowsViewModel(
                     val nextEpInSameSeason = currentSeasonEpisodes.find { it.episode_number == lastWatched.episodeNumber + 1 }
                     
                     if (nextEpInSameSeason != null) {
-                        val isRecent = (System.currentTimeMillis() - lastWatched.watchedAt) < 30L * 24 * 60 * 60 * 1000 // 30 days
+                        val isRecent = (System.currentTimeMillis() - lastWatched.timestamp) < 30L * 24 * 60 * 60 * 1000 // 30 days
                         val nextData = NextEpisodeData(
                             showId = show.showId,
                             showName = details.name ?: "Unknown",
@@ -191,16 +194,14 @@ class TvShowsViewModel(
                     } else {
                         // Check next season
                         if (!seasonDetailsMap.containsKey("${show.showId}_${lastWatched.seasonNumber + 1}")) {
-                            val seasonResult2 = repository.getSeasonDetails(apiKey, show.showId.toIntOrNull() ?: 0, lastWatched.seasonNumber + 1)
-                            val seasonInfo2 = seasonResult2.getOrNull()
-                            if (seasonInfo2 != null) {
-                                seasonDetailsMap["${show.showId}_${lastWatched.seasonNumber + 1}"] = seasonInfo2.episodes
+                            repository.getTvSeasonDetails(apiKey, show.showId.toIntOrNull() ?: 0, lastWatched.seasonNumber + 1).getOrNull()?.let { seasonInfo ->
+                                seasonDetailsMap["${show.showId}_${lastWatched.seasonNumber + 1}"] = seasonInfo.episodes
                             }
                         }
                         val nextSeasonEpisodes = seasonDetailsMap["${show.showId}_${lastWatched.seasonNumber + 1}"] ?: emptyList()
                         val firstEpNextSeason = nextSeasonEpisodes.find { it.episode_number == 1 }
                         if (firstEpNextSeason != null) {
-                            val isRecent = (System.currentTimeMillis() - lastWatched.watchedAt) < 30L * 24 * 60 * 60 * 1000
+                            val isRecent = (System.currentTimeMillis() - lastWatched.timestamp) < 30L * 24 * 60 * 60 * 1000
                             val nextData = NextEpisodeData(
                                 showId = show.showId,
                                 showName = details.name ?: "Unknown",
@@ -274,3 +275,7 @@ class TvShowsViewModelFactory(
         throw IllegalArgumentException("Unknown ViewModel class")
     }
 }
+"""
+
+with open('app/src/main/java/com/example/ui/screens/tvshows/TvShowsViewModel.kt', 'w') as f:
+    f.write(replacement)
