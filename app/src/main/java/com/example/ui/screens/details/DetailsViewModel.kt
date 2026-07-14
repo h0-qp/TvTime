@@ -74,7 +74,8 @@ class DetailsViewModel(
                         isInWatchlist = isInWatchlist,
                         firestoreItem = firestoreItem,
                         selectedSeasonDetails = seasonDetails,
-                        selectedSeasonNumber = seasonNumber
+                        selectedSeasonNumber = seasonNumber,
+                        selectedEpisodeDetails = if (currentState is DetailsUiState.Success) currentState.selectedEpisodeDetails else null
                     )
                 }.onFailure { exception ->
                     _uiState.value = DetailsUiState.Error(exception.message ?: "Unknown error occurred")
