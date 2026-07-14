@@ -60,6 +60,7 @@ fun DetailsScreen(
     mediaId: Int,
     mediaType: String,
     onNavigateBack: () -> Unit,
+    onNavigateToDetails: (String, Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val viewModel: DetailsViewModel = viewModel(
@@ -300,7 +301,7 @@ fun DetailsScreen(
                             
                             if (selectedTab == 0) {
                                 // About Tab
-                                AboutTabContent(item = item)
+                                AboutTabContent(item = item, onNavigateToDetails = onNavigateToDetails)
                             } else if (selectedTab == 1 && mediaType != "tv") {
                                 // More Tab (Movies)
                                 MoreTabContent(item = item)
@@ -521,7 +522,7 @@ fun DetailsScreen(
 }
 
 @Composable
-fun AboutTabContent(item: MediaItem) {
+fun AboutTabContent(item: MediaItem, onNavigateToDetails: (String, Int) -> Unit) {
     Column(modifier = Modifier.fillMaxWidth()) {
         // "أين تُشاهد" section
         Row(
@@ -654,7 +655,7 @@ fun AboutTabContent(item: MediaItem) {
                         model = "https://image.tmdb.org/t/p/w342${similarItem.poster_path}",
                         contentDescription = similarItem.title ?: similarItem.name,
                         contentScale = ContentScale.Crop,
-                        modifier = Modifier.width(120.dp).height(180.dp).clip(RoundedCornerShape(8.dp)).background(DarkGrey)
+                        modifier = Modifier.width(120.dp).height(180.dp).clip(RoundedCornerShape(8.dp)).background(DarkGrey).clickable { onNavigateToDetails(similarItem.media_type ?: item.media_type ?: "tv", similarItem.id) }
                     )
                 }
             }

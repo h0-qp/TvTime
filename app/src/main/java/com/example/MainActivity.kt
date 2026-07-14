@@ -170,6 +170,7 @@ fun TrackVerseApp(appContainer: com.example.data.AppContainer) {
                 com.example.ui.screens.profile.ProfileScreen(
                     authRepository = appContainer.authRepository,
                     firestoreRepository = appContainer.firestoreRepository,
+                    onNavigateToDetails = { mediaType, mediaId -> navController.navigate("details/$mediaType/$mediaId") },
                     onSignOut = {
                         navController.navigate("auth") {
                             popUpTo(0) { inclusive = true }
@@ -191,7 +192,8 @@ fun TrackVerseApp(appContainer: com.example.data.AppContainer) {
                     firestoreRepository = appContainer.firestoreRepository,
                     mediaId = mediaId,
                     mediaType = mediaType,
-                    onNavigateBack = { navController.popBackStack() }
+                    onNavigateBack = { navController.popBackStack() },
+                    onNavigateToDetails = { type, id -> navController.navigate("details/$type/$id") }
                 )
             }
         }

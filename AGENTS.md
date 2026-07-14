@@ -1,0 +1,3 @@
+- Always build a release APK, not a debug APK. Use `gradle :app:assembleRelease`.
+- Always ensure secrets are injected when building an APK.
+- Do not build an APK unless explicitly told to do so.

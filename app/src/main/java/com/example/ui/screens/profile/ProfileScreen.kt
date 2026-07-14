@@ -24,6 +24,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.platform.LocalContext
+import android.widget.Toast
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -50,10 +52,12 @@ fun ProfileScreen(
     authRepository: AuthRepository,
     firestoreRepository: FirestoreRepository,
     onSignOut: () -> Unit,
+    onNavigateToDetails: (String, Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val currentUser = authRepository.currentUser
     val email = currentUser?.email ?: "guest@trackverse.com"
+    val context = LocalContext.current
     val username = email.substringBefore("@")
     
     val userMedia by firestoreRepository.observeUserMedia().collectAsState(initial = emptyList())
@@ -108,7 +112,8 @@ fun ProfileScreen(
                         modifier = Modifier
                             .size(36.dp)
                             .clip(CircleShape)
-                            .background(GoldYellow),
+                            .background(GoldYellow)
+                            .clickable { Toast.makeText(context, "لا توجد إشعارات جديدة", Toast.LENGTH_SHORT).show() },
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
@@ -169,7 +174,7 @@ fun ProfileScreen(
                             modifier = Modifier
                                 .border(1.dp, Color.White, RoundedCornerShape(16.dp))
                                 .padding(horizontal = 16.dp, vertical = 4.dp)
-                                .clickable { /* TODO edit profile */ }
+                                .clickable { Toast.makeText(context, "هذه الميزة ستتوفر قريباً", Toast.LENGTH_SHORT).show() }
                         ) {
                             Text(
                                 text = "تعديل",
@@ -275,7 +280,7 @@ fun ProfileScreen(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     items(tvShows.take(5)) { show ->
-                        MediaPosterItem(show)
+                        MediaPosterItem(show, onNavigateToDetails)
                     }
                 }
             } else {
@@ -303,7 +308,7 @@ fun ProfileScreen(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     items(movies.take(5)) { movie ->
-                        MediaPosterItem(movie)
+                        MediaPosterItem(movie, onNavigateToDetails)
                     }
                 }
             } else {
@@ -377,13 +382,14 @@ fun SectionHeader(title: String, isFavorite: Boolean = false) {
 
 @Composable
 fun AddButtonBox(text: String) {
+    val context = LocalContext.current
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp)
             .height(160.dp)
             .background(Color(0xFF1E1E1E), RoundedCornerShape(8.dp))
-            .clickable { /* TODO */ },
+            .clickable { Toast.makeText(context, "هذه الميزة ستتوفر قريباً", Toast.LENGTH_SHORT).show() },
         contentAlignment = Alignment.Center
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -404,13 +410,14 @@ fun AddButtonBox(text: String) {
 }
 
 @Composable
-fun MediaPosterItem(item: FirestoreMediaItem) {
+fun MediaPosterItem(item: FirestoreMediaItem, onNavigateToDetails: (String, Int) -> Unit) {
     Box(
         modifier = Modifier
             .width(110.dp)
             .height(160.dp)
             .clip(RoundedCornerShape(8.dp))
             .background(DarkGrey)
+            .clickable { onNavigateToDetails(item.mediaType, item.id) }
     ) {
         AsyncImage(
             model = "https://image.tmdb.org/t/p/w342${item.posterPath}",
