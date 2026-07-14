@@ -5,9 +5,11 @@ plugins {
   alias(libs.plugins.kotlin.compose)
   alias(libs.plugins.google.devtools.ksp)
   alias(libs.plugins.roborazzi)
-  alias(libs.plugins.secrets)
+  
   alias(libs.plugins.google.services)
 }
+
+val tmdbKey = System.getenv("TMDB_API_KEY") ?: ""
 
 android {
   namespace = "com.example"
@@ -41,12 +43,16 @@ android {
 
   buildTypes {
     release {
+      buildConfigField("String", "TMDB_API_KEY", "\"$tmdbKey\"")
       isCrunchPngs = false
       isMinifyEnabled = false
       proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+     
       signingConfig = signingConfigs.getByName("debugConfig")
     }
-    debug { signingConfig = signingConfigs.getByName("debugConfig") }
+    debug {
+      buildConfigField("String", "TMDB_API_KEY", "\"$tmdbKey\"")
+      signingConfig = signingConfigs.getByName("debugConfig") }
   }
   compileOptions {
     sourceCompatibility = JavaVersion.VERSION_11
@@ -61,10 +67,6 @@ android {
 
 // Configure the Secrets Gradle Plugin to use .env and .env.example files
 // to match the convention used in Web projects.
-secrets {
-  propertiesFileName = ".env"
-  defaultPropertiesFileName = ".env.example"
-}
 
 googleServices { missingGoogleServicesStrategy = MissingGoogleServicesStrategy.WARN }
 

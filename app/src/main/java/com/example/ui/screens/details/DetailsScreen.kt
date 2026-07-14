@@ -542,20 +542,47 @@ fun AboutTabContent(item: MediaItem, onNavigateToDetails: (String, Int) -> Unit)
             Text(text = "أين تُشاهد", color = TextPrimary, fontSize = 18.sp, fontWeight = FontWeight.Bold)
         }
         Spacer(modifier = Modifier.height(16.dp))
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.End
-        ) {
-            Button(
-                onClick = { },
-                colors = ButtonDefaults.buttonColors(containerColor = DarkGrey),
-                shape = RoundedCornerShape(24.dp),
-                contentPadding = PaddingValues(horizontal = 24.dp, vertical = 8.dp)
-            ) {
-                Text(text = "OSN+", color = TextPrimary, fontWeight = FontWeight.Bold)
-                Spacer(modifier = Modifier.width(8.dp))
-                Icon(Icons.Default.PlayArrow, contentDescription = "Play", tint = TextPrimary, modifier = Modifier.size(16.dp))
+        
+        val providers = mutableListOf<com.example.data.remote.WatchProviderItem>()
+        // Prioritize AE, SA, or US. Or just get all unique ones.
+        item.watch_providers?.results?.let { results ->
+            // If AR region exists, take it, else try AE, SA, US, etc. Or just gather all unique ones.
+            results.values.forEach { region ->
+                region.flatrate?.let { providers.addAll(it) }
             }
+        }
+        val uniqueProviders = providers.distinctBy { it.provider_id }
+        
+        if (uniqueProviders.isNotEmpty()) {
+            androidx.compose.foundation.lazy.LazyRow(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End,
+                reverseLayout = true
+            ) {
+                items(uniqueProviders.take(5)) { provider ->
+                    Button(
+                        onClick = { },
+                        colors = ButtonDefaults.buttonColors(containerColor = DarkGrey),
+                        shape = RoundedCornerShape(24.dp),
+                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                        modifier = Modifier.padding(start = 8.dp)
+                    ) {
+                        Text(text = provider.provider_name, color = TextPrimary, fontWeight = FontWeight.Bold)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        if (provider.logo_path != null) {
+                            coil.compose.AsyncImage(
+                                model = "https://image.tmdb.org/t/p/w200${provider.logo_path}",
+                                contentDescription = provider.provider_name,
+                                modifier = Modifier.size(24.dp).clip(RoundedCornerShape(4.dp))
+                            )
+                        } else {
+                            Icon(Icons.Default.PlayArrow, contentDescription = "Play", tint = TextPrimary, modifier = Modifier.size(16.dp))
+                        }
+                    }
+                }
+            }
+        } else {
+            Text(text = "غير متاح للمشاهدة حالياً", color = TextSecondary, fontSize = 14.sp, modifier = Modifier.align(Alignment.End))
         }
         
         Spacer(modifier = Modifier.height(24.dp))

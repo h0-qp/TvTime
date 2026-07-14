@@ -3,6 +3,7 @@ package com.example.data.remote
 import retrofit2.http.GET
 import retrofit2.http.Query
 import retrofit2.http.Path
+import com.squareup.moshi.Json
 
 interface TmdbApi {
     @GET("trending/tv/day")
@@ -86,7 +87,7 @@ interface TmdbApi {
         @Path("tv_id") tvId: Int,
         @Query("api_key") apiKey: String,
         @Query("language") language: String = "en-US",
-        @Query("append_to_response") appendToResponse: String = "credits,similar,videos"
+        @Query("append_to_response") appendToResponse: String = "credits,similar,videos,watch/providers"
     ): MediaItem
 
     @GET("movie/{movie_id}")
@@ -94,7 +95,7 @@ interface TmdbApi {
         @Path("movie_id") movieId: Int,
         @Query("api_key") apiKey: String,
         @Query("language") language: String = "en-US",
-        @Query("append_to_response") appendToResponse: String = "credits,similar,videos"
+        @Query("append_to_response") appendToResponse: String = "credits,similar,videos,watch/providers"
     ): MediaItem
     
     @GET("tv/{tv_id}/season/{season_number}")
@@ -136,7 +137,8 @@ data class MediaItem(
     val vote_average: Double? = null,
     val runtime: Int? = null,
     val episode_run_time: List<Int>? = null
-)
+,
+    @Json(name = "watch/providers") val watch_providers: WatchProvidersResponse? = null)
 
 data class EpisodeToAir(
     val id: Int,
@@ -207,3 +209,19 @@ data class VideoItem(
 )
 
 data class Genre(val id: Int, val name: String)
+data class WatchProvidersResponse(
+    val results: Map<String, WatchProviderRegion>?
+)
+
+data class WatchProviderRegion(
+    val link: String?,
+    val flatrate: List<WatchProviderItem>?,
+    val rent: List<WatchProviderItem>?,
+    val buy: List<WatchProviderItem>?
+)
+
+data class WatchProviderItem(
+    val provider_id: Int,
+    val provider_name: String,
+    val logo_path: String?
+)
