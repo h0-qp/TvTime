@@ -71,6 +71,16 @@ fun DetailsScreen(
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var showAddSuccess by remember { mutableStateOf(false) }
 
+    val handleBack = {
+        if (uiState is DetailsUiState.Success && (uiState as DetailsUiState.Success).selectedEpisodeDetails != null) {
+            viewModel.selectEpisode(null)
+        } else {
+            onNavigateBack()
+        }
+    }
+
+    androidx.activity.compose.BackHandler(onBack = handleBack)
+
     LaunchedEffect(showAddSuccess) {
         if (showAddSuccess) {
             kotlinx.coroutines.delay(2000)
@@ -143,7 +153,8 @@ fun DetailsScreen(
                             episode = state.selectedEpisodeDetails,
                             isWatched = state.firestoreItem?.watchedEpisodes?.contains("S${state.selectedEpisodeDetails.season_number}E${state.selectedEpisodeDetails.episode_number}") == true,
                             onToggleWatched = { viewModel.toggleEpisode(state.selectedEpisodeDetails.season_number, state.selectedEpisodeDetails.episode_number) },
-                            showTitle = state.mediaItem.name ?: state.mediaItem.title ?: "Unknown"
+                            showTitle = state.mediaItem.name ?: state.mediaItem.title ?: "Unknown",
+                            onNavigateBack = { handleBack() }
                         )
                     } else {
                         val item = state.mediaItem
@@ -190,7 +201,7 @@ fun DetailsScreen(
                                 IconButton(onClick = { showBottomSheet = true }) {
                                     Icon(Icons.Default.MoreHoriz, contentDescription = "Options", tint = TrueBlack, modifier = Modifier.background(Color.White.copy(alpha=0.5f), androidx.compose.foundation.shape.CircleShape).padding(4.dp))
                                 }
-                                IconButton(onClick = { onNavigateBack() }) {
+                                IconButton(onClick = { handleBack() }) {
                                     Icon(Icons.Default.KeyboardArrowDown, contentDescription = "Back", tint = TrueBlack, modifier = Modifier.background(Color.White.copy(alpha=0.5f), androidx.compose.foundation.shape.CircleShape).padding(4.dp))
                                 }
                             }
@@ -255,9 +266,8 @@ fun DetailsScreen(
                                         .background(if (isWatched) androidx.compose.ui.graphics.Color(0xFF4CAF50) else TrueBlack)
                                         .border(1.dp, if (isWatched) androidx.compose.ui.graphics.Color(0xFF4CAF50) else TextSecondary, androidx.compose.foundation.shape.CircleShape)
                                         .clickable { 
-                                            if (state.isInWatchlist) {
+                                            
                                                 viewModel.toggleMovieWatched() 
-                                            }
                                         },
                                     contentAlignment = Alignment.Center
                                 ) {
@@ -424,9 +434,8 @@ fun DetailsScreen(
                                                             .background(if (isWatched) Color(0xFF81C784) else Color.Transparent)
                                                             .border(2.dp, if (isWatched) Color(0xFF81C784) else TextSecondary, androidx.compose.foundation.shape.CircleShape)
                                                             .clickable { 
-                                                                if (state.isInWatchlist) {
+                                                                
                                                                     viewModel.toggleEpisode(episode.season_number, episode.episode_number)
-                                                                }
                                                             },
                                                         contentAlignment = Alignment.Center
                                                     ) {
@@ -674,9 +683,21 @@ fun EpisodeDetailsContent(
     episode: com.example.data.remote.Episode,
     isWatched: Boolean,
     onToggleWatched: () -> Unit,
-    showTitle: String
+    showTitle: String,
+    onNavigateBack: () -> Unit
 ) {
-    Column(modifier = Modifier.fillMaxWidth()) {
+    Column(modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState())) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(onClick = onNavigateBack) {
+                Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = TextPrimary)
+            }
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(text = showTitle, color = TextPrimary, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+        }
+        
         // Watched Toggle Section
         Row(
             verticalAlignment = Alignment.CenterVertically,

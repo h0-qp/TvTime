@@ -125,18 +125,31 @@ class DetailsViewModel(
         val currentState = _uiState.value
         if (currentState is DetailsUiState.Success) {
             val firestoreItem = currentState.firestoreItem
-            if (firestoreItem != null) {
-                val episodeKey = "S${seasonNumber}E${episodeNumber}"
-                val currentWatched = firestoreItem.watchedEpisodes.toMutableList()
-                if (currentWatched.contains(episodeKey)) {
-                    currentWatched.remove(episodeKey)
-                } else {
-                    currentWatched.add(episodeKey)
-                }
-                
-                viewModelScope.launch {
+            val episodeKey = "S${seasonNumber}E${episodeNumber}"
+            
+            viewModelScope.launch {
+                if (firestoreItem != null) {
+                    val currentWatched = firestoreItem.watchedEpisodes.toMutableList()
+                    if (currentWatched.contains(episodeKey)) {
+                        currentWatched.remove(episodeKey)
+                    } else {
+                        currentWatched.add(episodeKey)
+                    }
                     firestoreRepository.addOrUpdateMedia(
                         firestoreItem.copy(watchedEpisodes = currentWatched)
+                    )
+                } else {
+                    val item = currentState.mediaItem
+                    firestoreRepository.addOrUpdateMedia(
+                        FirestoreMediaItem(
+                            id = item.id,
+                            title = item.name ?: item.title ?: "Unknown",
+                            posterPath = item.poster_path,
+                            mediaType = mediaType,
+                            isWatched = false,
+                            watchedEpisodes = listOf(episodeKey),
+                            addedAt = System.currentTimeMillis()
+                        )
                     )
                 }
             }
@@ -145,12 +158,24 @@ class DetailsViewModel(
 
     fun toggleMovieWatched() {
         val currentState = _uiState.value
-        if (currentState is DetailsUiState.Success) {
+        if (currentState is DetailsUiState.Success && mediaType == "movie") {
             val firestoreItem = currentState.firestoreItem
-            if (firestoreItem != null && mediaType == "movie") {
-                viewModelScope.launch {
+            viewModelScope.launch {
+                if (firestoreItem != null) {
                     firestoreRepository.addOrUpdateMedia(
                         firestoreItem.copy(isWatched = !firestoreItem.isWatched)
+                    )
+                } else {
+                    val item = currentState.mediaItem
+                    firestoreRepository.addOrUpdateMedia(
+                        FirestoreMediaItem(
+                            id = item.id,
+                            title = item.name ?: item.title ?: "Unknown",
+                            posterPath = item.poster_path,
+                            mediaType = mediaType,
+                            isWatched = true,
+                            addedAt = System.currentTimeMillis()
+                        )
                     )
                 }
             }
