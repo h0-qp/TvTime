@@ -10,6 +10,7 @@ import com.example.data.AppContainer
 import com.example.data.DefaultAppContainer
 import com.example.util.NotificationHelper
 import com.example.worker.EpisodeCheckWorker
+import com.google.firebase.FirebaseApp
 import java.util.concurrent.TimeUnit
 
 class TrackVerseApplication : Application() {
@@ -17,6 +18,7 @@ class TrackVerseApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        FirebaseApp.initializeApp(this)
         container = DefaultAppContainer(this)
         
         NotificationHelper.createNotificationChannel(this)
