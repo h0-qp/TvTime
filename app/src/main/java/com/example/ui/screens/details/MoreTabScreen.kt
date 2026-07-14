@@ -43,6 +43,14 @@ fun MoreTabContent(item: MediaItem) {
     )
     val uiState by viewModel.uiState.collectAsState()
 
+    val context = androidx.compose.ui.platform.LocalContext.current
+    androidx.compose.runtime.LaunchedEffect(uiState.errorMessage) {
+        uiState.errorMessage?.let { errorMsg ->
+            android.widget.Toast.makeText(context, "خطأ في قاعدة البيانات: $errorMsg", android.widget.Toast.LENGTH_LONG).show()
+            viewModel.clearError()
+        }
+    }
+
     val stats = uiState.stats
     val userVotes = uiState.userVotes
 
@@ -67,9 +75,9 @@ fun MoreTabContent(item: MediaItem) {
                 )
                 platforms.forEach { platform ->
                     val isSelected = userVotes.platform == platform.id
-                    val votes = stats.platforms[platform.id] ?: 0
+                    val votes = stats.platforms[platform.id] ?: 0L
                     val total = stats.totalVotesPlatforms
-                    val percentage = if (total > 0) (votes * 100) / total else 0
+                    val percentage = if (total > 0L) ((votes * 100L) / total).toInt() else 0
 
                     PlatformCard(
                         platform = platform,
@@ -98,9 +106,9 @@ fun MoreTabContent(item: MediaItem) {
                 )
                 ratings.forEach { rating ->
                     val isSelected = userVotes.rating == rating.id
-                    val votes = stats.ratings[rating.id] ?: 0
+                    val votes = stats.ratings[rating.id] ?: 0L
                     val total = stats.totalVotesRatings
-                    val percentage = if (total > 0) (votes * 100) / total else 0
+                    val percentage = if (total > 0L) ((votes * 100L) / total).toInt() else 0
 
                     RatingCard(
                         rating = rating,
@@ -137,9 +145,9 @@ fun MoreTabContent(item: MediaItem) {
                 )
                 emotions.forEach { emotion ->
                     val isSelected = userVotes.emotion == emotion.id
-                    val votes = stats.emotions[emotion.id] ?: 0
+                    val votes = stats.emotions[emotion.id] ?: 0L
                     val total = stats.totalVotesEmotions
-                    val percentage = if (total > 0) (votes * 100) / total else 0
+                    val percentage = if (total > 0L) ((votes * 100L) / total).toInt() else 0
 
                     EmotionCard(
                         emotion = emotion,
@@ -162,9 +170,9 @@ fun MoreTabContent(item: MediaItem) {
                 ) {
                     items(item.credits.cast.take(15)) { cast ->
                         val isSelected = userVotes.favorite_character == cast.id.toString()
-                        val votes = stats.favorite_characters[cast.id.toString()] ?: 0
+                        val votes = stats.favorite_characters[cast.id.toString()] ?: 0L
                         val total = stats.totalVotesCharacters
-                        val percentage = if (total > 0) (votes * 100) / total else 0
+                        val percentage = if (total > 0L) ((votes * 100L) / total).toInt() else 0
 
                         CharacterCard(
                             cast = cast,
@@ -191,7 +199,7 @@ fun MoreTabContent(item: MediaItem) {
         ) {
             Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null, tint = Color.White)
             Spacer(modifier = Modifier.width(8.dp))
-            Text("٦١٠ تعليقات", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+            Text("٠ تعليق", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
         }
     }
 }

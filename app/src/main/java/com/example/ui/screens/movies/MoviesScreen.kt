@@ -153,25 +153,6 @@ fun MoviesScreen(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier
                     .weight(1f)
-                    .clickable { selectedTab = 0 }
-            ) {
-                Text(
-                    text = "المرتقبة",
-                    color = if (selectedTab == 0) GoldYellow else TextSecondary,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 16.sp
-                )
-                Spacer(modifier = Modifier.height(6.dp))
-                if (selectedTab == 0) {
-                    Box(modifier = Modifier.height(3.dp).width(60.dp).background(GoldYellow, RoundedCornerShape(1.5.dp)))
-                } else {
-                    Spacer(modifier = Modifier.height(3.dp))
-                }
-            }
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier
-                    .weight(1f)
                     .clickable { selectedTab = 1 }
             ) {
                 Text(
@@ -183,6 +164,25 @@ fun MoviesScreen(
                 Spacer(modifier = Modifier.height(6.dp))
                 if (selectedTab == 1) {
                     Box(modifier = Modifier.height(3.dp).width(100.dp).background(GoldYellow, RoundedCornerShape(1.5.dp)))
+                } else {
+                    Spacer(modifier = Modifier.height(3.dp))
+                }
+            }
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier
+                    .weight(1f)
+                    .clickable { selectedTab = 0 }
+            ) {
+                Text(
+                    text = "المرتقبة",
+                    color = if (selectedTab == 0) GoldYellow else TextSecondary,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 16.sp
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+                if (selectedTab == 0) {
+                    Box(modifier = Modifier.height(3.dp).width(60.dp).background(GoldYellow, RoundedCornerShape(1.5.dp)))
                 } else {
                     Spacer(modifier = Modifier.height(3.dp))
                 }
@@ -210,18 +210,23 @@ fun MoviesScreen(
                 )
             }
             
-            // Left Toggle Icon Button (في أعلى الشاشة جهة اليسار)
+            // Right Toggle Icon Button (في أعلى الشاشة جهة اليمين لتشابه التصميم الأصلي)
             IconButton(
                 onClick = { isGridView = !isGridView },
                 modifier = Modifier
-                    .align(Alignment.CenterStart)
-                    .size(48.dp)
+                    .align(Alignment.CenterEnd)
+                    .size(36.dp)
+                    .border(
+                        width = 1.5.dp,
+                        color = if (isGridView) GoldYellow else Color.White.copy(alpha = 0.6f),
+                        shape = RoundedCornerShape(6.dp)
+                    )
             ) {
                 Icon(
-                    imageVector = if (isGridView) Icons.Default.List else Icons.Default.GridView,
+                    imageVector = Icons.Default.GridView,
                     contentDescription = "Toggle View",
-                    tint = if (isGridView) GoldYellow else Color.White,
-                    modifier = Modifier.size(24.dp)
+                    tint = if (isGridView) GoldYellow else Color.White.copy(alpha = 0.8f),
+                    modifier = Modifier.size(20.dp)
                 )
             }
         }
@@ -402,65 +407,7 @@ fun MovieWatchlistCard(
             .padding(12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Left side: Check button (صح فارغ يمتلئ بالضغط)
-        Box(
-            modifier = Modifier
-                .size(36.dp)
-                .border(2.dp, Color.White, CircleShape)
-                .clip(CircleShape)
-                .clickable { onMarkWatched(movie.firebaseItem) },
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector = Icons.Default.Check,
-                contentDescription = "Mark as Watched",
-                tint = Color.White,
-                modifier = Modifier.size(18.dp)
-            )
-        }
-        
-        Spacer(modifier = Modifier.width(16.dp))
-        
-        // Center: Details (Title, runtime, genres)
-        Column(
-            modifier = Modifier.weight(1f),
-            horizontalAlignment = Alignment.End
-        ) {
-            Text(
-                text = movie.firebaseItem.title,
-                color = TextPrimary,
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Bold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                textAlign = TextAlign.Right
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            
-            val detailsText = buildString {
-                if (movie.runtimeStr.isNotEmpty()) {
-                    append(movie.runtimeStr)
-                }
-                if (movie.genresStr.isNotEmpty()) {
-                    if (isNotEmpty()) append(" • ")
-                    append(movie.genresStr)
-                }
-            }
-            if (detailsText.isNotEmpty()) {
-                Text(
-                    text = detailsText,
-                    color = TextSecondary,
-                    fontSize = 12.sp,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    textAlign = TextAlign.Right
-                )
-            }
-        }
-        
-        Spacer(modifier = Modifier.width(16.dp))
-        
-        // Right side: Poster
+        // 1. Right side: Poster
         if (movie.firebaseItem.posterPath != null) {
             AsyncImage(
                 model = "https://image.tmdb.org/t/p/w500${movie.firebaseItem.posterPath}",
@@ -488,6 +435,64 @@ fun MovieWatchlistCard(
                 )
             }
         }
+        
+        Spacer(modifier = Modifier.width(16.dp))
+        
+        // 2. Center: Details (Title, runtime, genres)
+        Column(
+            modifier = Modifier.weight(1f),
+            horizontalAlignment = Alignment.Start
+        ) {
+            Text(
+                text = movie.firebaseItem.title,
+                color = TextPrimary,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                textAlign = TextAlign.Start
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            
+            val detailsText = buildString {
+                if (movie.runtimeStr.isNotEmpty()) {
+                    append(movie.runtimeStr)
+                }
+                if (movie.genresStr.isNotEmpty()) {
+                    if (isNotEmpty()) append(" • ")
+                    append(movie.genresStr)
+                }
+            }
+            if (detailsText.isNotEmpty()) {
+                Text(
+                    text = detailsText,
+                    color = TextSecondary,
+                    fontSize = 12.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    textAlign = TextAlign.Start
+                )
+            }
+        }
+        
+        Spacer(modifier = Modifier.width(16.dp))
+        
+        // 3. Left side: Check button (صح فارغ يمتلئ بالضغط)
+        Box(
+            modifier = Modifier
+                .size(36.dp)
+                .border(2.dp, Color.White, CircleShape)
+                .clip(CircleShape)
+                .clickable { onMarkWatched(movie.firebaseItem) },
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = Icons.Default.Check,
+                contentDescription = "Mark as Watched",
+                tint = Color.White,
+                modifier = Modifier.size(18.dp)
+            )
+        }
     }
 }
 
@@ -505,7 +510,76 @@ fun UpcomingMovieCard(
             .padding(12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Left side: Days counter
+        // 1. Right side: Poster
+        if (movie.firebaseItem.posterPath != null) {
+            AsyncImage(
+                model = "https://image.tmdb.org/t/p/w500${movie.firebaseItem.posterPath}",
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .size(width = 64.dp, height = 96.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(Color.DarkGray)
+            )
+        } else {
+            // Default blue placeholder with Tv Icon
+            Box(
+                modifier = Modifier
+                    .size(width = 64.dp, height = 96.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(Color(0xFF2196F3)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Tv,
+                    contentDescription = null,
+                    tint = Color.White.copy(alpha = 0.8f),
+                    modifier = Modifier.size(28.dp)
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.width(16.dp))
+
+        // 2. Center: Details
+        Column(
+            modifier = Modifier.weight(1f),
+            horizontalAlignment = Alignment.Start
+        ) {
+            Text(
+                text = movie.firebaseItem.title,
+                color = TextPrimary,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                textAlign = TextAlign.Start
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            val detailsText = buildString {
+                if (movie.runtimeStr.isNotEmpty()) {
+                    append(movie.runtimeStr)
+                }
+                if (movie.genresStr.isNotEmpty()) {
+                    if (isNotEmpty()) append(" • ")
+                    append(movie.genresStr)
+                }
+            }
+            if (detailsText.isNotEmpty()) {
+                Text(
+                    text = detailsText,
+                    color = TextSecondary,
+                    fontSize = 12.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    textAlign = TextAlign.Start
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.width(16.dp))
+
+        // 3. Left side: Days counter
         if (movie.daysDiff != null) {
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -526,75 +600,6 @@ fun UpcomingMovieCard(
             }
         } else {
             Spacer(modifier = Modifier.width(80.dp))
-        }
-
-        Spacer(modifier = Modifier.width(16.dp))
-
-        // Center: Details
-        Column(
-            modifier = Modifier.weight(1f),
-            horizontalAlignment = Alignment.End
-        ) {
-            Text(
-                text = movie.firebaseItem.title,
-                color = TextPrimary,
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Bold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                textAlign = TextAlign.Right
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            val detailsText = buildString {
-                if (movie.runtimeStr.isNotEmpty()) {
-                    append(movie.runtimeStr)
-                }
-                if (movie.genresStr.isNotEmpty()) {
-                    if (isNotEmpty()) append(" • ")
-                    append(movie.genresStr)
-                }
-            }
-            if (detailsText.isNotEmpty()) {
-                Text(
-                    text = detailsText,
-                    color = TextSecondary,
-                    fontSize = 12.sp,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    textAlign = TextAlign.Right
-                )
-            }
-        }
-
-        Spacer(modifier = Modifier.width(16.dp))
-
-        // Right side: Poster
-        if (movie.firebaseItem.posterPath != null) {
-            AsyncImage(
-                model = "https://image.tmdb.org/t/p/w500${movie.firebaseItem.posterPath}",
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier
-                    .size(width = 64.dp, height = 96.dp)
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(Color.DarkGray)
-            )
-        } else {
-            // Default blue placeholder with Tv Icon
-            Box(
-                modifier = Modifier
-                    .size(width = 64.dp, height = 96.dp)
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(Color(0xFF2196F3)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Tv,
-                    contentDescription = null,
-                    tint = Color.White.copy(alpha = 0.8f),
-                    modifier = Modifier.size(28.dp)
-                )
-            }
         }
     }
 }

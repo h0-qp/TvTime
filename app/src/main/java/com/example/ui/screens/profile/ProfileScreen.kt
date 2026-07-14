@@ -13,7 +13,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.MoreHoriz
@@ -373,7 +373,7 @@ fun SectionHeader(title: String, isFavorite: Boolean = false) {
             }
         }
         Icon(
-            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
+            imageVector = Icons.Default.KeyboardArrowLeft,
             contentDescription = "View All",
             tint = Color.White
         )

@@ -70,7 +70,7 @@ fun ExploreScreen(
     val uiState by viewModel.uiState.collectAsState()
     val searchQuery by viewModel.searchQuery.collectAsState()
     
-    var selectedTab by remember { mutableStateOf("اكتشف") }
+    var selectedTab by remember { mutableStateOf("تغذية") }
     val tabs = listOf("تغذية", "اكتشف", "مجموعات", "نشاط")
 
     Column(
@@ -477,31 +477,33 @@ fun CollectionCard(genre: com.example.data.remote.Genre) {
             .clickable { },
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Details
-        Column(
-            modifier = Modifier.weight(1f).padding(end = 16.dp),
-            horizontalAlignment = Alignment.End,
-            verticalArrangement = Arrangement.Center
-        ) {
-            Text(text = genre.name, color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-            Spacer(modifier = Modifier.height(4.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(text = comments, color = TextPrimary, fontSize = 12.sp)
-                Spacer(modifier = Modifier.width(4.dp))
-                Icon(Icons.Default.ArrowBack, contentDescription = "Comments", tint = TextSecondary, modifier = Modifier.size(14.dp)) // Comment icon placeholder
-                Spacer(modifier = Modifier.width(12.dp))
-                Text(text = followers, color = TextPrimary, fontSize = 12.sp)
-                Spacer(modifier = Modifier.width(4.dp))
-                Icon(Icons.Default.Add, contentDescription = "Followers", tint = TextSecondary, modifier = Modifier.size(14.dp)) // Group icon placeholder
-            }
-        }
-        
         // Image
         Box(
             modifier = Modifier.width(80.dp).fillMaxHeight().background(DarkGrey),
             contentAlignment = Alignment.Center
         ) {
             Icon(Icons.Default.Tv, contentDescription = null, tint = TextSecondary)
+        }
+        
+        Spacer(modifier = Modifier.width(16.dp))
+        
+        // Details
+        Column(
+            modifier = Modifier.weight(1f).padding(start = 16.dp),
+            horizontalAlignment = Alignment.Start,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Text(text = genre.name, color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+            Spacer(modifier = Modifier.height(4.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(text = followers, color = TextPrimary, fontSize = 12.sp)
+                Spacer(modifier = Modifier.width(4.dp))
+                Icon(Icons.Default.Add, contentDescription = "Followers", tint = TextSecondary, modifier = Modifier.size(14.dp)) // Group icon placeholder
+                Spacer(modifier = Modifier.width(12.dp))
+                Text(text = comments, color = TextPrimary, fontSize = 12.sp)
+                Spacer(modifier = Modifier.width(4.dp))
+                Icon(Icons.Default.ArrowBack, contentDescription = "Comments", tint = TextSecondary, modifier = Modifier.size(14.dp)) // Comment icon placeholder
+            }
         }
     }
 }

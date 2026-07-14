@@ -45,10 +45,10 @@ sealed class Screen(val route: String, val title: String, val icon: ImageVector)
 }
 
 val bottomNavItems = listOf(
-    Screen.Profile,
-    Screen.Explore,
+    Screen.TvShows,
     Screen.Movies,
-    Screen.TvShows
+    Screen.Explore,
+    Screen.Profile
 )
 
 class MainActivity : ComponentActivity() {

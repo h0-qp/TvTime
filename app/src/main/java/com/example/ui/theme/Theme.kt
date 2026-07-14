@@ -25,6 +25,12 @@ fun TrackVerseTheme(
   MaterialTheme(
     colorScheme = DarkColorScheme,
     typography = Typography,
-    content = content
+    content = {
+      androidx.compose.runtime.CompositionLocalProvider(
+        androidx.compose.ui.platform.LocalLayoutDirection provides androidx.compose.ui.unit.LayoutDirection.Rtl
+      ) {
+        content()
+      }
+    }
   )
 }
