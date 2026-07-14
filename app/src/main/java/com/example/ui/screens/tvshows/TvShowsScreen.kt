@@ -1,5 +1,6 @@
 package com.example.ui.screens.tvshows
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -10,16 +11,13 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.runtime.*
-import com.example.data.firebase.FirestoreMediaItem
+import androidx.compose.material3.*
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -27,129 +25,108 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
-import com.example.data.remote.MediaItem
-import com.example.data.repository.MediaRepository
 import com.example.ui.theme.DarkGrey
 import com.example.ui.theme.GoldYellow
 import com.example.ui.theme.TextPrimary
 import com.example.ui.theme.TextSecondary
 import com.example.ui.theme.TrueBlack
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun TvShowsScreen(
-    repository: MediaRepository,
-    firestoreRepository: com.example.data.firebase.FirestoreRepository,
-    onNavigateToDetails: (String, Int) -> Unit,
-    modifier: Modifier = Modifier
+    viewModel: TvShowsViewModel,
+    onNavigateToDetails: (String, Int) -> Unit
 ) {
-    val viewModel: TvShowsViewModel = viewModel(
-        factory = TvShowsViewModelFactory(repository, firestoreRepository)
-    )
     val uiState by viewModel.uiState.collectAsState()
-    var selectedTab by remember { mutableStateOf(1) } // 0 = Upcoming, 1 = Watchlist
 
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .background(TrueBlack)
-    ) {
-        // Top Tabs
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            horizontalArrangement = Arrangement.SpaceEvenly
-        ) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.clickable { selectedTab = 0 }) {
-                Text("المرتقبة", color = if (selectedTab == 0) TextPrimary else TextSecondary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                Spacer(modifier = Modifier.height(6.dp))
-                if (selectedTab == 0) {
-                    Box(modifier = Modifier.height(3.dp).width(50.dp).background(GoldYellow, RoundedCornerShape(1.5.dp)))
-                } else {
-                    Spacer(modifier = Modifier.height(3.dp))
-                }
+    Box(modifier = Modifier.fillMaxSize().background(TrueBlack)) {
+        when (uiState) {
+            is WatchlistUiState.Loading -> {
+                CircularProgressIndicator(
+                    modifier = Modifier.align(Alignment.Center),
+                    color = GoldYellow
+                )
             }
-            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.clickable { selectedTab = 1 }) {
-                Text("قائمة المشاهدة", color = if (selectedTab == 1) TextPrimary else TextSecondary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                Spacer(modifier = Modifier.height(6.dp))
-                if (selectedTab == 1) {
-                    Box(modifier = Modifier.height(3.dp).width(50.dp).background(GoldYellow, RoundedCornerShape(1.5.dp)))
-                } else {
-                    Spacer(modifier = Modifier.height(3.dp))
-                }
+            is WatchlistUiState.Error -> {
+                Text(
+                    text = (uiState as WatchlistUiState.Error).message,
+                    color = Color.Red,
+                    modifier = Modifier.align(Alignment.Center)
+                )
             }
-        }
-
-        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            when (val state = uiState) {
-                is TvShowsUiState.Loading -> {
-                    CircularProgressIndicator(color = GoldYellow)
-                }
-                is TvShowsUiState.Error -> {
-                    Text(
-                        text = state.message,
-                        color = MaterialTheme.colorScheme.error,
-                        modifier = Modifier.padding(16.dp)
-                    )
-                }
-                is TvShowsUiState.Success -> {
-                    if (selectedTab == 1) {
-                        if (state.watchlist.isEmpty()) {
-                            Text("قائمتك فارغة. ابحث عن مسلسلات لإضافتها!", color = TextSecondary)
-                        } else {
-                            LazyColumn(
-                                modifier = Modifier.fillMaxSize(),
-                                contentPadding = PaddingValues(bottom = 16.dp)
-                            ) {
-                                item {
-                                    SectionHeader("مسلسلاتك")
-                                }
-                                
-                                items(state.watchlist) { show ->
-                                    WatchlistCard(show, onNavigateToDetails)
-                                }
-                            }
-                        }
-                    } else {
-                        LazyColumn(
-                            modifier = Modifier.fillMaxSize(),
-                            contentPadding = PaddingValues(bottom = 16.dp)
-                        ) {
-                            if (state.upcomingEpisodes.isEmpty()) {
-                                item {
-                                    Box(modifier = Modifier.fillParentMaxSize(), contentAlignment = Alignment.Center) {
-                                        Text("لا توجد مسلسلات مرتقبة", color = TextSecondary)
-                                    }
-                                }
-                            } else {
-                                val grouped = state.upcomingEpisodes.groupBy { 
-                                    when (it.daysDifference) {
-                                        -1L -> "أمس"
-                                        0L -> "اليوم"
-                                        1L -> "غدًا"
-                                        else -> if (it.daysDifference > 1) "بعد ${it.daysDifference} أيام" else "قبل ${-it.daysDifference} أيام"
-                                    }
-                                }
-                                
-                                grouped.forEach { (header, episodes) ->
-                                    item {
-                                        SectionHeader(header)
-                                    }
-                                    items(episodes) { epData ->
-                                        UpcomingEpisodeCard(
-                                            epData = epData, 
-                                            onNavigateToDetails = onNavigateToDetails,
-                                            onToggleWatched = { showId, epKey -> 
-                                                viewModel.toggleEpisodeWatched(showId, epKey) 
-                                            }
-                                        )
-                                    }
-                                }
-                            }
+            is WatchlistUiState.Success -> {
+                val successState = uiState as WatchlistUiState.Success
+                
+                if (successState.watchedHistory.isEmpty() && successState.watchNext.isEmpty() && successState.notWatchedForAWhile.isEmpty() && successState.notStarted.isEmpty()) {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Text("قائمتك فارغة. ابحث عن مسلسلات لإضافتها!", color = TextSecondary)
+                    }
+                } else {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(bottom = 100.dp)
+                    ) {
+                    // 1. Watched History
+                    if (successState.watchedHistory.isNotEmpty()) {
+                        item { SectionHeader("سجل المشاهدة") }
+                        items(successState.watchedHistory, key = { "watched_${it.showId}_${it.seasonNumber}_${it.episodeNumber}" }) { ep ->
+                            WatchedEpisodeCard(
+                                epData = ep,
+                                onNavigateToDetails = onNavigateToDetails,
+                                onUnwatch = {
+                                    viewModel.markEpisodeUnwatched(ep.showId, ep.seasonNumber, ep.episodeNumber)
+                                },
+                                modifier = Modifier.animateItemPlacement()
+                            )
                         }
                     }
+
+                    // 2. Watch Next
+                    if (successState.watchNext.isNotEmpty()) {
+                        item { SectionHeader("شاهد التالي") }
+                        items(successState.watchNext, key = { "next_${it.showId}_${it.seasonNumber}_${it.episodeNumber}" }) { ep ->
+                            NextEpisodeCard(
+                                epData = ep,
+                                onNavigateToDetails = onNavigateToDetails,
+                                onWatch = {
+                                    viewModel.markEpisodeWatched(ep.showId, ep.seasonNumber, ep.episodeNumber)
+                                },
+                                modifier = Modifier.animateItemPlacement()
+                            )
+                        }
+                    }
+
+                    // 3. Not Watched For A While
+                    if (successState.notWatchedForAWhile.isNotEmpty()) {
+                        item { SectionHeader("لم يتم مشاهدته منذ فترة") }
+                        items(successState.notWatchedForAWhile, key = { "awhile_${it.showId}_${it.seasonNumber}_${it.episodeNumber}" }) { ep ->
+                            NextEpisodeCard(
+                                epData = ep,
+                                onNavigateToDetails = onNavigateToDetails,
+                                onWatch = {
+                                    viewModel.markEpisodeWatched(ep.showId, ep.seasonNumber, ep.episodeNumber)
+                                },
+                                modifier = Modifier.animateItemPlacement()
+                            )
+                        }
+                    }
+
+                    // 4. Not Started
+                    if (successState.notStarted.isNotEmpty()) {
+                        item { SectionHeader("لم يبدأ") }
+                        items(successState.notStarted, key = { "notstarted_${it.showId}" }) { show ->
+                            NotStartedCard(
+                                showData = show,
+                                onNavigateToDetails = onNavigateToDetails,
+                                onStart = {
+                                    viewModel.markEpisodeWatched(show.showId, 1, 1)
+                                },
+                                modifier = Modifier.animateItemPlacement()
+                            )
+                        }
+                    }
+                }
                 }
             }
         }
@@ -175,130 +152,35 @@ fun SectionHeader(title: String) {
 }
 
 @Composable
-fun TrendingCard(show: MediaItem, onNavigateToDetails: (String, Int) -> Unit) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 6.dp)
-            .background(DarkGrey, RoundedCornerShape(12.dp))
-            .clickable { onNavigateToDetails("tv", show.id) }
-            .padding(12.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        // Details
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = show.name ?: show.title ?: "Unknown",
-                color = TextPrimary,
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Bold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = show.first_air_date?.take(4) ?: "",
-                color = GoldYellow,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Medium
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = show.overview.orEmpty().ifEmpty { "لا يوجد وصف متاح..." },
-                color = TextSecondary,
-                fontSize = 12.sp,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
-            )
-        }
-        
-        Spacer(modifier = Modifier.width(12.dp))
-        
-        // Image
-        AsyncImage(
-            model = "https://image.tmdb.org/t/p/w500${show.poster_path}",
-            contentDescription = null,
-            contentScale = ContentScale.Crop,
-            modifier = Modifier
-                .size(width = 64.dp, height = 96.dp)
-                .clip(RoundedCornerShape(8.dp))
-                .background(Color.DarkGray)
-        )
-    }
-}
-
-@Composable
-fun WatchlistCard(show: FirestoreMediaItem, onNavigateToDetails: (String, Int) -> Unit) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 6.dp)
-            .background(DarkGrey, RoundedCornerShape(12.dp))
-            .clickable { onNavigateToDetails("tv", show.id) }
-            .padding(12.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        // Details
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = show.title,
-                color = TextPrimary,
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Bold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("تمت المشاهدة: ${show.watchedEpisodes.size} حلقة", color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-            }
-        }
-        
-        Spacer(modifier = Modifier.width(12.dp))
-        
-        // Image
-        AsyncImage(
-            model = "https://image.tmdb.org/t/p/w500${show.posterPath}",
-            contentDescription = null,
-            contentScale = ContentScale.Crop,
-            modifier = Modifier
-                .size(width = 64.dp, height = 96.dp)
-                .clip(RoundedCornerShape(8.dp))
-                .background(Color.DarkGray)
-        )
-    }
-}
-
-@Composable
-fun UpcomingEpisodeCard(
-    epData: UpcomingEpisodeData, 
+fun WatchedEpisodeCard(
+    epData: WatchedEpisodeData, 
     onNavigateToDetails: (String, Int) -> Unit,
-    onToggleWatched: (Int, String) -> Unit
+    onUnwatch: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
-    val seasonStr = epData.episodeToAir.season_number.toString().padStart(2, '0')
-    val epStr = epData.episodeToAir.episode_number.toString().padStart(2, '0')
-    val epKey = "S${epData.episodeToAir.season_number}E${epData.episodeToAir.episode_number}"
-    val isWatched = epData.show.watchedEpisodes.contains(epKey)
+    val seasonStr = epData.seasonNumber.toString().padStart(2, '0')
+    val epStr = epData.episodeNumber.toString().padStart(2, '0')
 
     Row(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 6.dp)
-            .background(if (isWatched) Color(0xFF1E1E1E) else DarkGrey, RoundedCornerShape(12.dp))
-            .clickable { onNavigateToDetails("tv", epData.show.id) }
-            .padding(12.dp),
+            .background(DarkGrey, RoundedCornerShape(12.dp))
+            .clickable { onNavigateToDetails("tv", epData.showId.toInt()) }
+            .padding(12.dp)
+            .alpha(0.5f), // Watched items are faded
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Checkbox
+        // Checkbox - Watched State
         Box(
             modifier = Modifier
                 .size(40.dp)
-                .background(if (isWatched) Color(0xFF4CAF50) else Color.White, CircleShape)
-                .clickable { onToggleWatched(epData.show.id, epKey) }
+                .background(Color(0xFF4CAF50), CircleShape)
+                .clickable { onUnwatch() }
                 .padding(8.dp),
             contentAlignment = Alignment.Center
         ) {
-            Icon(Icons.Filled.Check, contentDescription = "Watched", tint = if (isWatched) Color.White else Color.LightGray)
+            Icon(Icons.Filled.Check, contentDescription = "Unwatch", tint = Color.White)
         }
         
         Spacer(modifier = Modifier.width(16.dp))
@@ -308,24 +190,23 @@ fun UpcomingEpisodeCard(
             modifier = Modifier.weight(1f),
             horizontalAlignment = Alignment.End
         ) {
-            // Show name pill
             Box(
                 modifier = Modifier
                     .border(1.dp, Color.White, RoundedCornerShape(16.dp))
                     .padding(horizontal = 8.dp, vertical = 4.dp)
             ) {
-                Text("< ${(epData.showDetails.name ?: epData.showDetails.title ?: epData.show.title).uppercase()}", color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                Text("< ${epData.showName.uppercase()}", color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold)
             }
             Spacer(modifier = Modifier.height(8.dp))
             Text(
                 text = "S$seasonStr | E$epStr",
-                color = if (isWatched) Color.Gray else Color.White,
+                color = Color.Gray,
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold
             )
             Spacer(modifier = Modifier.height(4.dp))
             Text(
-                text = epData.episodeToAir.name,
+                text = epData.episodeName,
                 color = Color.LightGray,
                 fontSize = 14.sp,
                 maxLines = 1,
@@ -336,12 +217,12 @@ fun UpcomingEpisodeCard(
         Spacer(modifier = Modifier.width(16.dp))
         
         // Image
-        val imageUrl = epData.episodeToAir.still_path?.let { "https://image.tmdb.org/t/p/w500$it" } 
-            ?: epData.showDetails.poster_path?.let { "https://image.tmdb.org/t/p/w500$it" }
+        val imageUrl = epData.backdropPath?.let { "https://image.tmdb.org/t/p/w500$it" }
+            ?: epData.posterPath?.let { "https://image.tmdb.org/t/p/w500$it" }
         
         Box(
             modifier = Modifier
-                .size(width = 100.dp, height = 100.dp)
+                .size(width = 100.dp, height = 70.dp)
                 .clip(RoundedCornerShape(8.dp))
                 .background(Color.DarkGray)
         ) {
@@ -351,9 +232,143 @@ fun UpcomingEpisodeCard(
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize()
             )
-            if (isWatched) {
-                Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.5f)))
+            Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.5f)))
+        }
+    }
+}
+
+@Composable
+fun NextEpisodeCard(
+    epData: NextEpisodeData, 
+    onNavigateToDetails: (String, Int) -> Unit,
+    onWatch: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val seasonStr = epData.seasonNumber.toString().padStart(2, '0')
+    val epStr = epData.episodeNumber.toString().padStart(2, '0')
+
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 6.dp)
+            .background(DarkGrey, RoundedCornerShape(12.dp))
+            .clickable { onNavigateToDetails("tv", epData.showId.toInt()) }
+            .padding(12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // Checkbox - Unwatched State
+        Box(
+            modifier = Modifier
+                .size(40.dp)
+                .background(Color.White, CircleShape)
+                .clickable { onWatch() }
+                .padding(8.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(Icons.Filled.Check, contentDescription = "Watch", tint = Color.LightGray)
+        }
+        
+        Spacer(modifier = Modifier.width(16.dp))
+        
+        // Details
+        Column(
+            modifier = Modifier.weight(1f),
+            horizontalAlignment = Alignment.End
+        ) {
+            Box(
+                modifier = Modifier
+                    .border(1.dp, Color.White, RoundedCornerShape(16.dp))
+                    .padding(horizontal = 8.dp, vertical = 4.dp)
+            ) {
+                Text("< ${epData.showName.uppercase()}", color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = "S$seasonStr | E$epStr",
+                color = Color.White,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = epData.episodeName,
+                color = Color.LightGray,
+                fontSize = 14.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+        
+        Spacer(modifier = Modifier.width(16.dp))
+        
+        // Image
+        val imageUrl = epData.backdropPath?.let { "https://image.tmdb.org/t/p/w500$it" }
+            ?: epData.posterPath?.let { "https://image.tmdb.org/t/p/w500$it" }
+            
+        Box(
+            modifier = Modifier
+                .size(width = 100.dp, height = 70.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .background(Color.DarkGray)
+        ) {
+            AsyncImage(
+                model = imageUrl,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize()
+            )
+        }
+    }
+}
+
+@Composable
+fun NotStartedCard(
+    showData: NotStartedShowData, 
+    onNavigateToDetails: (String, Int) -> Unit,
+    onStart: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 6.dp)
+            .background(DarkGrey, RoundedCornerShape(12.dp))
+            .clickable { onNavigateToDetails("tv", showData.showId.toInt()) }
+            .padding(12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = showData.showName,
+                color = TextPrimary,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Text("تمت المشاهدة: 0 حلقة من ${showData.totalEpisodes}", color = TextSecondary, fontSize = 14.sp)
+            Spacer(modifier = Modifier.height(8.dp))
+            Button(
+                onClick = onStart,
+                colors = ButtonDefaults.buttonColors(containerColor = GoldYellow),
+                shape = RoundedCornerShape(8.dp)
+            ) {
+                Text("ابدأ الحلقة الأولى", color = TrueBlack, fontWeight = FontWeight.Bold)
             }
         }
+        
+        Spacer(modifier = Modifier.width(16.dp))
+        
+        val imageUrl = showData.posterPath?.let { "https://image.tmdb.org/t/p/w500$it" }
+        AsyncImage(
+            model = imageUrl,
+            contentDescription = null,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier
+                .size(width = 64.dp, height = 96.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .background(Color.DarkGray)
+        )
     }
 }

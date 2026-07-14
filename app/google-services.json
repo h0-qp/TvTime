@@ -22,6 +22,14 @@
           }
         },
         {
+          "client_id": "987873552497-tn4rssaprnmqsq894shcqkkc86d8vo00.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.aistudio.trackverse.xyzab",
+            "certificate_hash": "512e98c58f2f905c18569457944fa8619a916993"
+          }
+        },
+        {
           "client_id": "987873552497-oqdgq4qjt5uiq20sokjrnf701jjspkor.apps.googleusercontent.com",
           "client_type": 3
         }

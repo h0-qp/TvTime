@@ -189,6 +189,9 @@ class DetailsViewModel(
             viewModelScope.launch {
                 if (currentState.isInWatchlist) {
                     firestoreRepository.removeMedia(item.id)
+                    if (mediaType == "tv") {
+                        firestoreRepository.removeTvShowFromWatchlist(item.id.toString())
+                    }
                 } else {
                     firestoreRepository.addOrUpdateMedia(
                         FirestoreMediaItem(
@@ -200,6 +203,9 @@ class DetailsViewModel(
                             addedAt = System.currentTimeMillis()
                         )
                     )
+                    if (mediaType == "tv") {
+                        firestoreRepository.addTvShowToWatchlist(item.id.toString())
+                    }
                 }
             }
         }

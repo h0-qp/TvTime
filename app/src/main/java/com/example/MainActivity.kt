@@ -126,9 +126,11 @@ fun TrackVerseApp(appContainer: com.example.data.AppContainer) {
                 )
             }
             composable(Screen.TvShows.route) { 
+                val tvViewModel: com.example.ui.screens.tvshows.TvShowsViewModel = androidx.lifecycle.viewmodel.compose.viewModel(
+                    factory = com.example.ui.screens.tvshows.TvShowsViewModelFactory(appContainer.mediaRepository, appContainer.firestoreRepository)
+                )
                 TvShowsScreen(
-                    repository = appContainer.mediaRepository,
-                    firestoreRepository = appContainer.firestoreRepository,
+                    viewModel = tvViewModel,
                     onNavigateToDetails = { mediaType, mediaId ->
                         navController.navigate("details/$mediaType/$mediaId")
                     }

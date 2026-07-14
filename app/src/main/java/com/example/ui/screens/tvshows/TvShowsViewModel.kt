@@ -6,34 +6,61 @@ import androidx.lifecycle.viewModelScope
 import com.example.BuildConfig
 import com.example.data.firebase.FirestoreMediaItem
 import com.example.data.firebase.FirestoreRepository
+import com.example.data.firebase.WatchedEpisode
+import com.example.data.firebase.WatchlistShow
 import com.example.data.remote.MediaItem
 import com.example.data.remote.EpisodeToAir
+import com.example.data.remote.Episode
 import com.example.data.repository.MediaRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
-import java.time.LocalDate
-import java.time.format.DateTimeFormatter
-import java.time.temporal.ChronoUnit
 
-data class UpcomingEpisodeData(
-    val show: FirestoreMediaItem,
-    val showDetails: MediaItem,
-    val episodeToAir: EpisodeToAir,
-    val daysDifference: Long
+// Represents the unwatched episode to watch next
+data class NextEpisodeData(
+    val showId: String,
+    val showName: String,
+    val backdropPath: String?,
+    val posterPath: String?,
+    val seasonNumber: Int,
+    val episodeNumber: Int,
+    val episodeName: String,
+    val isWatched: Boolean = false
 )
 
-sealed class TvShowsUiState {
-    object Loading : TvShowsUiState()
+// Represents an episode that was watched
+data class WatchedEpisodeData(
+    val showId: String,
+    val showName: String,
+    val backdropPath: String?,
+    val posterPath: String?,
+    val seasonNumber: Int,
+    val episodeNumber: Int,
+    val episodeName: String,
+    val watchedAt: Long
+)
+
+// Represents a show that hasn't been started
+data class NotStartedShowData(
+    val showId: String,
+    val showName: String,
+    val posterPath: String?,
+    val totalEpisodes: Int
+)
+
+sealed class WatchlistUiState {
+    object Loading : WatchlistUiState()
     data class Success(
-        val trendingShows: List<MediaItem>, 
-        val watchlist: List<FirestoreMediaItem> = emptyList(),
-        val upcomingEpisodes: List<UpcomingEpisodeData> = emptyList()
-    ) : TvShowsUiState()
-    data class Error(val message: String) : TvShowsUiState()
+        val watchedHistory: List<WatchedEpisodeData>,
+        val watchNext: List<NextEpisodeData>,
+        val notWatchedForAWhile: List<NextEpisodeData>,
+        val notStarted: List<NotStartedShowData>
+    ) : WatchlistUiState()
+    data class Error(val message: String) : WatchlistUiState()
 }
 
 class TvShowsViewModel(
@@ -41,94 +68,156 @@ class TvShowsViewModel(
     private val firestoreRepository: FirestoreRepository
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow<TvShowsUiState>(TvShowsUiState.Loading)
-    val uiState: StateFlow<TvShowsUiState> = _uiState
+    private val _uiState = MutableStateFlow<WatchlistUiState>(WatchlistUiState.Loading)
+    val uiState: StateFlow<WatchlistUiState> = _uiState
 
     init {
-        fetchData()
+        fetchWatchlistData()
     }
 
-
-    fun toggleEpisodeWatched(showId: Int, episodeKey: String) {
+    fun markEpisodeWatched(showId: String, season: Int, episode: Int) {
         viewModelScope.launch {
-            val currentState = _uiState.value
-            if (currentState is TvShowsUiState.Success) {
-                val show = currentState.watchlist.find { it.id == showId } ?: return@launch
-                val newWatched = show.watchedEpisodes.toMutableList()
-                if (newWatched.contains(episodeKey)) {
-                    newWatched.remove(episodeKey)
-                } else {
-                    newWatched.add(episodeKey)
-                }
-                firestoreRepository.addOrUpdateMedia(show.copy(watchedEpisodes = newWatched))
-            }
+            firestoreRepository.markEpisodeWatched(showId, season, episode)
         }
     }
 
-    private fun fetchData() {
+    fun markEpisodeUnwatched(showId: String, season: Int, episode: Int) {
         viewModelScope.launch {
-            _uiState.value = TvShowsUiState.Loading
+            firestoreRepository.markEpisodeUnwatched(showId, season, episode)
+        }
+    }
+
+    private fun fetchWatchlistData() {
+        viewModelScope.launch {
+            _uiState.value = WatchlistUiState.Loading
             val apiKey = BuildConfig.TMDB_API_KEY
+
             if (apiKey.isEmpty() || apiKey == "MY_TMDB_API_KEY") {
-                _uiState.value = TvShowsUiState.Error("Missing TMDB API Key. Please add it to Secrets.")
+                _uiState.value = WatchlistUiState.Error("Missing TMDB API Key. Please add it to Secrets.")
                 return@launch
             }
 
-            // First get TMDB items
-            val result = repository.getUpcomingTvShows(apiKey)
-            val trendingShows = result.getOrNull()?.results ?: emptyList()
+            combine(
+                firestoreRepository.observeWatchlistShows(),
+                firestoreRepository.observeWatchedEpisodes()
+            ) { watchlist, watchedEps ->
+                Pair(watchlist, watchedEps)
+            }.collectLatest { (watchlist, watchedEps) ->
+                val showDetailsMap = mutableMapOf<String, MediaItem>()
+                val seasonDetailsMap = mutableMapOf<String, List<Episode>>() // key: showId_seasonNumber
 
-            // Then observe Firestore
-            firestoreRepository.observeUserMedia().collectLatest { mediaList ->
-                val tvShows = mediaList.filter { it.mediaType == "tv" }
-                
-                val today = LocalDate.now()
-                
-                // Fetch details for each TV show in watchlist
-                val deferredEpisodes = tvShows.map { show ->
+                // Fetch details for all shows in watchlist in parallel
+                val deferredDetails = watchlist.map { show ->
                     async {
-                        val detailsResult = repository.getMediaDetails(apiKey, show.id, "tv")
-                        val episodesList = mutableListOf<UpcomingEpisodeData>()
-                        detailsResult.onSuccess { details ->
-                            val englishTitle = details.name ?: details.title
-                            if (englishTitle != null && show.title != englishTitle) {
-                                firestoreRepository.addOrUpdateMedia(
-                                    show.copy(
-                                        title = englishTitle,
-                                        posterPath = details.poster_path ?: show.posterPath
-                                    )
-                                )
-                            }
-                            // Get episodes from the most recent season
-                            val latestSeasonNum = details.last_episode_to_air?.season_number ?: details.next_episode_to_air?.season_number
-                            if (latestSeasonNum != null) {
-                                val seasonResult = repository.getSeasonDetails(apiKey, show.id, latestSeasonNum)
-                                seasonResult.onSuccess { seasonData ->
-                                    seasonData.episodes.forEach { ep ->
-                                        if (ep.air_date != null) {
-                                            val airDate = try { LocalDate.parse(ep.air_date) } catch (e: Exception) { null }
-                                            if (airDate != null) {
-                                                val diff = ChronoUnit.DAYS.between(today, airDate)
-                                                // Show episodes from the last 30 days and upcoming 14 days
-                                                if (diff in -30..14) {
-                                                    val epToAir = EpisodeToAir(ep.id, ep.name, ep.overview ?: "", ep.air_date, ep.episode_number, ep.season_number, ep.still_path)
-                                                    episodesList.add(UpcomingEpisodeData(show, details, epToAir, diff))
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
+                        val result = repository.getMediaDetails(apiKey, show.showId.toIntOrNull() ?: 0, "tv")
+                        result.getOrNull()?.let { details ->
+                            showDetailsMap[show.showId] = details
                         }
-                        episodesList
                     }
                 }
+                deferredDetails.awaitAll()
+
+                val watchedHistory = mutableListOf<WatchedEpisodeData>()
+                val watchNext = mutableListOf<NextEpisodeData>()
+                val notWatchedForAWhile = mutableListOf<NextEpisodeData>()
+                val notStarted = mutableListOf<NotStartedShowData>()
                 
-                val upcomingEpisodes = deferredEpisodes.awaitAll().flatten().sortedBy { it.episodeToAir.air_date }
-                _uiState.value = TvShowsUiState.Success(
-                    trendingShows = trendingShows,
-                    watchlist = tvShows,
-                    upcomingEpisodes = upcomingEpisodes
+                val currentTime = System.currentTimeMillis()
+                val thirtyDaysInMillis = 30L * 24 * 60 * 60 * 1000
+
+                // Now determine the next episode for each show
+                // To find the next episode, we need to know all episodes for the show.
+                // Instead of fetching ALL seasons for ALL shows, let's just fetch the seasons that are relevant.
+                // We'll figure out the latest watched episode.
+                
+                for (show in watchlist) {
+                    val details = showDetailsMap[show.showId] ?: continue
+                    val showName = details.name ?: details.title ?: "Unknown"
+                    
+                    val showWatchedEps = watchedEps.filter { it.showId == show.showId }.sortedWith(compareBy({ it.seasonNumber }, { it.episodeNumber }))
+                    
+                    if (showWatchedEps.isEmpty()) {
+                        notStarted.add(
+                            NotStartedShowData(
+                                showId = show.showId,
+                                showName = showName,
+                                posterPath = details.poster_path,
+                                totalEpisodes = details.number_of_episodes ?: 0
+                            )
+                        )
+                        continue
+                    }
+                    
+                    // Add watched episodes to history
+                    for (ep in showWatchedEps) {
+                        watchedHistory.add(
+                            WatchedEpisodeData(
+                                showId = show.showId,
+                                showName = showName,
+                                backdropPath = details.backdrop_path,
+                                posterPath = details.poster_path,
+                                seasonNumber = ep.seasonNumber,
+                                episodeNumber = ep.episodeNumber,
+                                episodeName = "الحلقة ${ep.episodeNumber}", // Fallback name
+                                watchedAt = ep.watchedAt
+                            )
+                        )
+                    }
+
+                    val lastWatched = showWatchedEps.last()
+                    val lastWatchedAt = showWatchedEps.maxOf { it.watchedAt }
+                    
+                    // Need to find the next unwatched episode.
+                    // This could be episode + 1 in the same season, or episode 1 in the next season.
+                    // We need season details. Let's fetch the last watched season to see if there are more episodes.
+                    val seasonRes = repository.getSeasonDetails(apiKey, show.showId.toInt(), lastWatched.seasonNumber)
+                    var nextEp: Episode? = null
+                    var nextSeasonNum = lastWatched.seasonNumber
+                    
+                    seasonRes.onSuccess { seasonData ->
+                        val nextEpInSameSeason = seasonData.episodes.find { it.episode_number > lastWatched.episodeNumber }
+                        if (nextEpInSameSeason != null) {
+                            nextEp = nextEpInSameSeason
+                        } else {
+                            // Check next season
+                            val nextSeasonResult = repository.getSeasonDetails(apiKey, show.showId.toInt(), lastWatched.seasonNumber + 1)
+                            nextSeasonResult.onSuccess { nextSeasonData ->
+                                nextEp = nextSeasonData.episodes.firstOrNull()
+                                nextSeasonNum = lastWatched.seasonNumber + 1
+                            }
+                        }
+                    }
+
+                    if (nextEp != null) {
+                        val nextEpData = NextEpisodeData(
+                            showId = show.showId,
+                            showName = showName,
+                            backdropPath = nextEp?.still_path ?: details.backdrop_path,
+                            posterPath = details.poster_path,
+                            seasonNumber = nextSeasonNum,
+                            episodeNumber = nextEp?.episode_number ?: 0,
+                            episodeName = nextEp?.name ?: "الحلقة ${nextEp?.episode_number ?: 0}"
+                        )
+                        
+                        if (currentTime - lastWatchedAt < thirtyDaysInMillis) {
+                            watchNext.add(nextEpData)
+                        } else {
+                            notWatchedForAWhile.add(nextEpData)
+                        }
+                    }
+                }
+
+                // Fetch real names for watched history if needed? The user just needs the info.
+                // We'll skip fetching individual episode details for watched history to avoid rate limits, fallback name is used.
+                
+                // Sort history
+                watchedHistory.sortByDescending { it.watchedAt }
+                
+                _uiState.value = WatchlistUiState.Success(
+                    watchedHistory = watchedHistory,
+                    watchNext = watchNext,
+                    notWatchedForAWhile = notWatchedForAWhile,
+                    notStarted = notStarted
                 )
             }
         }
