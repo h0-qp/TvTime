@@ -118,8 +118,11 @@ class TvShowsViewModel(
                 val showDetailsMap = mutableMapOf<String, MediaItem>()
                 val seasonDetailsMap = mutableMapOf<String, List<Episode>>() 
 
+                val tvMedia = allMedia.filter { it.mediaType == "tv" }
+                val activeWatchlist = tvMedia.map { WatchlistShow(it.id.toString(), it.addedAt) }
+
                 // 1. Fetch details for watchlist (Watch Next, History)
-                val deferredDetails = watchlist.map { show ->
+                val deferredDetails = activeWatchlist.map { show ->
                     async {
                         val result = repository.getMediaDetails(apiKey, show.showId.toIntOrNull() ?: 0, "tv")
                         result.getOrNull()?.let { details ->
@@ -134,7 +137,7 @@ class TvShowsViewModel(
                 val notWatchedForAWhile = mutableListOf<NextEpisodeData>()
                 val notStarted = mutableListOf<NotStartedShowData>()
 
-                for (show in watchlist) {
+                for (show in activeWatchlist) {
                     val details = showDetailsMap[show.showId] ?: continue
                     val showWatchedEps = watchedEps.filter { it.showId == show.showId }.sortedWith(compareBy({ it.seasonNumber }, { it.episodeNumber }))
                     
@@ -216,7 +219,6 @@ class TvShowsViewModel(
                 }
 
                 // 2. Fetch upcoming episodes for "المرتقبة" tab
-                val tvMedia = allMedia.filter { it.mediaType == "tv" }
                 val deferredUpcoming = tvMedia.map { media ->
                     async {
                         var epData: UpcomingEpisodeData? = null

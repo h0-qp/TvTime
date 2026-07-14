@@ -190,7 +190,7 @@ class ExploreViewModel(
                         title = item.name ?: item.title ?: "Unknown",
                         posterPath = item.poster_path,
                         mediaType = item.media_type ?: "tv",
-                        isWatched = false,
+                        watched = false,
                         addedAt = System.currentTimeMillis()
                     )
                 )

@@ -8,19 +8,17 @@ import com.example.data.firebase.FirestoreMediaItem
 import com.example.data.firebase.FirestoreRepository
 import com.example.data.remote.MediaItem
 import com.example.data.repository.MediaRepository
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 
 sealed class MoviesUiState {
     object Loading : MoviesUiState()
-    data class Success(val trendingMovies: List<MediaItem>, val watchlist: List<FirestoreMediaItem> = emptyList()) : MoviesUiState()
+    data class Success(
+        val watchlist: List<FirestoreMediaItem> = emptyList(),
+        val movieDetails: Map<Int, MediaItem> = emptyMap()
+    ) : MoviesUiState()
     data class Error(val message: String) : MoviesUiState()
 }
 
@@ -46,65 +44,50 @@ class MoviesViewModel(
             }
 
             firestoreRepository.observeUserMedia().collectLatest { mediaList ->
-                val movies = mediaList.filter { it.mediaType == "movie" }
+                val watchlistMovies = mediaList.filter { it.mediaType == "movie" && !it.watched }
                 
-                // Set initial state immediately with watchlist
                 val currentState = _uiState.value
-                val previousUpcoming = if (currentState is MoviesUiState.Success) currentState.trendingMovies else emptyList()
+                val existingDetails = if (currentState is MoviesUiState.Success) currentState.movieDetails else emptyMap()
                 
+                // Set initial state immediately with watchlist and cached details
                 _uiState.value = MoviesUiState.Success(
-                    trendingMovies = previousUpcoming,
-                    watchlist = movies
+                    watchlist = watchlistMovies,
+                    movieDetails = existingDetails
                 )
                 
-                // Fetch English details and find upcoming movies from watchlist
+                // Fetch TMDB details for any new watchlist items
                 viewModelScope.launch {
-                    val deferreds = movies.map { movie ->
-                        async {
-                            val detailsResult = repository.getMediaDetails(apiKey, movie.id, "movie")
-                            var upcomingItem: MediaItem? = null
-                            detailsResult.onSuccess { details ->
-                                val englishTitle = details.title ?: details.name
-                                if (englishTitle != null && movie.title != englishTitle) {
-                                    firestoreRepository.addOrUpdateMedia(
-                                        movie.copy(
-                                            title = englishTitle,
-                                            posterPath = details.poster_path ?: movie.posterPath
-                                        )
-                                    )
+                    val updatedDetails = existingDetails.toMutableMap()
+                    var hasNewDetails = false
+                    
+                    watchlistMovies.forEach { movie ->
+                        if (!updatedDetails.containsKey(movie.id)) {
+                            try {
+                                val result = repository.getMediaDetails(apiKey, movie.id, "movie")
+                                result.onSuccess { details ->
+                                    updatedDetails[movie.id] = details
+                                    hasNewDetails = true
                                 }
-                                
-                                val releaseDateStr = details.release_date
-                                var isUpcoming = false
-                                if (!releaseDateStr.isNullOrEmpty()) {
-                                    try {
-                                        val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.US)
-                                        val releaseDate = dateFormat.parse(releaseDateStr)
-                                        if (releaseDate != null && releaseDate.after(Date())) {
-                                            isUpcoming = true
-                                        }
-                                    } catch (e: Exception) {}
-                                } else if (details.status != "Released" && details.status != "Canceled" && details.status != null) {
-                                    isUpcoming = true
-                                }
-                                
-                                if (isUpcoming) {
-                                    upcomingItem = details
-                                }
+                            } catch (e: Exception) {
+                                e.printStackTrace()
                             }
-                            upcomingItem
                         }
                     }
                     
-                    val results = deferreds.awaitAll()
-                    val upcomingMovies = results.filterNotNull().sortedBy { it.release_date }
-                    
-                    _uiState.value = MoviesUiState.Success(
-                        trendingMovies = upcomingMovies,
-                        watchlist = movies
-                    )
+                    if (hasNewDetails || existingDetails.size != updatedDetails.size) {
+                        _uiState.value = MoviesUiState.Success(
+                            watchlist = watchlistMovies,
+                            movieDetails = updatedDetails
+                        )
+                    }
                 }
             }
+        }
+    }
+
+    fun markAsWatched(movie: FirestoreMediaItem) {
+        viewModelScope.launch {
+            firestoreRepository.addOrUpdateMedia(movie.copy(watched = true))
         }
     }
 }

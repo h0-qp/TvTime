@@ -240,7 +240,7 @@ fun DetailsScreen(
                         }
                         
                         // Actions Row
-                        val isWatched = state.firestoreItem?.isWatched == true
+                        val isWatched = state.firestoreItem?.watched == true
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 16.dp),

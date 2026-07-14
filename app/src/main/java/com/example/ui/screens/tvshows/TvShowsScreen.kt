@@ -7,6 +7,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -38,6 +39,23 @@ fun TvShowsScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var selectedTab by remember { mutableStateOf(1) } // 0 = Upcoming, 1 = Watchlist
+    val listState = rememberLazyListState()
+    var hasAutoScrolled by remember { mutableStateOf(false) }
+
+    LaunchedEffect(uiState, selectedTab) {
+        if (selectedTab == 1 && uiState is TvShowsUiState.Success) {
+            val success = uiState as TvShowsUiState.Success
+            if (success.watchedHistory.isNotEmpty() && !hasAutoScrolled) {
+                val targetIndex = 1 + success.watchedHistory.size
+                listState.scrollToItem(targetIndex)
+                hasAutoScrolled = true
+            } else if (success.watchedHistory.isEmpty()) {
+                hasAutoScrolled = true
+            }
+        } else if (selectedTab != 1) {
+            hasAutoScrolled = false
+        }
+    }
 
     Column(modifier = Modifier.fillMaxSize().background(TrueBlack)) {
         // Top Tabs
@@ -91,6 +109,7 @@ fun TvShowsScreen(
                         }
                     } else {
                         LazyColumn(
+                            state = listState,
                             modifier = Modifier.fillMaxSize(),
                             contentPadding = PaddingValues(bottom = 100.dp)
                         ) {

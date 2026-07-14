@@ -12,7 +12,7 @@ data class FirestoreMediaItem(
     val title: String = "",
     val posterPath: String? = null,
     val mediaType: String = "", // "tv" or "movie"
-    @get:com.google.firebase.firestore.PropertyName("isWatched") @set:com.google.firebase.firestore.PropertyName("isWatched") var isWatched: Boolean = false,
+    var watched: Boolean = false,
     val addedAt: Long = 0L,
     val watchedEpisodes: List<String> = emptyList()
 )

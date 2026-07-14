@@ -145,7 +145,7 @@ class DetailsViewModel(
                             title = item.name ?: item.title ?: "Unknown",
                             posterPath = item.poster_path,
                             mediaType = mediaType,
-                            isWatched = false,
+                            watched = false,
                             watchedEpisodes = listOf(episodeKey),
                             addedAt = System.currentTimeMillis()
                         )
@@ -166,7 +166,7 @@ class DetailsViewModel(
             viewModelScope.launch {
                 if (firestoreItem != null) {
                     firestoreRepository.addOrUpdateMedia(
-                        firestoreItem.copy(isWatched = !firestoreItem.isWatched)
+                        firestoreItem.copy(watched = !firestoreItem.watched)
                     )
                 } else {
                     val item = currentState.mediaItem
@@ -176,7 +176,7 @@ class DetailsViewModel(
                             title = item.name ?: item.title ?: "Unknown",
                             posterPath = item.poster_path,
                             mediaType = mediaType,
-                            isWatched = true,
+                            watched = true,
                             addedAt = System.currentTimeMillis()
                         )
                     )
@@ -202,7 +202,7 @@ class DetailsViewModel(
                             title = item.name ?: item.title ?: "Unknown",
                             posterPath = item.poster_path,
                             mediaType = mediaType,
-                            isWatched = false,
+                            watched = false,
                             addedAt = System.currentTimeMillis()
                         )
                     )
