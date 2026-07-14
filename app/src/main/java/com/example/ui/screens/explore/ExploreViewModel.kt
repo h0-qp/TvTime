@@ -49,6 +49,7 @@ class ExploreViewModel(
     
     private var currentFeedPage = 1
     private var isFeedLastPage = false
+    private var currentWatchlistIds: Set<Int> = emptySet()
 
     init {
         observeWatchlist()
@@ -88,7 +89,8 @@ class ExploreViewModel(
                     upcomingTvShows = upcomingTv,
                     feedItems = initialFeed,
                     genres = combinedGenres,
-                    activityItems = activityItems
+                    activityItems = activityItems,
+                    watchlistIds = currentWatchlistIds
                 )
             } catch (e: Exception) {
                 _uiState.value = ExploreUiState.Error(e.message ?: "Unknown error")
@@ -155,7 +157,7 @@ class ExploreViewModel(
             if (currentState is ExploreUiState.Success) {
                 _uiState.value = currentState.copy(results = filteredResults)
             } else {
-                _uiState.value = ExploreUiState.Success(results = filteredResults)
+                _uiState.value = ExploreUiState.Success(results = filteredResults, watchlistIds = currentWatchlistIds)
             }
         }.onFailure { exception ->
             _uiState.value = ExploreUiState.Error(exception.message ?: "Unknown error occurred")
@@ -166,6 +168,7 @@ class ExploreViewModel(
         viewModelScope.launch {
             firestoreRepository.observeUserMedia().collectLatest { mediaList ->
                 val ids = mediaList.map { it.id }.toSet()
+                currentWatchlistIds = ids
                 val currentState = _uiState.value
                 if (currentState is ExploreUiState.Success) {
                     _uiState.value = currentState.copy(watchlistIds = ids)
