@@ -1,23 +1,20 @@
 import re
 
-file_path = "app/src/main/java/com/example/data/firebase/FirestoreRepository.kt"
-with open(file_path, "r") as f:
+with open('app/src/main/java/com/example/data/repository/MediaRepository.kt', 'r') as f:
     content = f.read()
 
-target = """        val listener = db.collection("users").document(uid)
-            .collection("watched_episodes")
-            .addSnapshotListener { snapshot, error ->"""
+content = content.replace('suspend fun getMediaDetails',
+'''    suspend fun getSeasonDetails(apiKey: String, tvId: Int, seasonNumber: Int): Result<com.example.data.remote.SeasonDetails> {
+        return try {
+            val response = tmdbApi.getSeasonDetails(tvId, seasonNumber, apiKey)
+            Result.success(response)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
 
-replacement = """        val listener = db.collection("users").document(uid)
-            .collection("watched_episodes")
-            .orderBy("watchedAt", com.google.firebase.firestore.Query.Direction.DESCENDING)
-            .limit(10)
-            .addSnapshotListener { snapshot, error ->"""
+    suspend fun getMediaDetails''')
 
-if target in content:
-    content = content.replace(target, replacement)
-    with open(file_path, "w") as f:
-        f.write(content)
-    print("Success Repo")
-else:
-    print("Target not found in Repo")
+with open('app/src/main/java/com/example/data/repository/MediaRepository.kt', 'w') as f:
+    f.write(content)
+
