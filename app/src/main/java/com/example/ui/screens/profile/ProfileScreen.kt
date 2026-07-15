@@ -53,6 +53,8 @@ fun ProfileScreen(
     firestoreRepository: FirestoreRepository,
     onSignOut: () -> Unit,
     onNavigateToDetails: (String, Int) -> Unit,
+    onNavigateToAllTvShows: () -> Unit,
+    onNavigateToAllMovies: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val currentUser = authRepository.currentUser
@@ -272,7 +274,7 @@ fun ProfileScreen(
 
         // TV Shows Section
         item {
-            SectionHeader(title = "مسلسلات")
+            SectionHeader(title = "مسلسلات", onClick = onNavigateToAllTvShows)
             if (tvShows.isNotEmpty()) {
                 LazyRow(
                     modifier = Modifier.fillMaxWidth(),
@@ -300,7 +302,7 @@ fun ProfileScreen(
 
         // Movies Section
         item {
-            SectionHeader(title = "أفلام")
+            SectionHeader(title = "أفلام", onClick = onNavigateToAllMovies)
             if (movies.isNotEmpty()) {
                 LazyRow(
                     modifier = Modifier.fillMaxWidth(),
@@ -347,10 +349,11 @@ fun TimeStat(label: String, value: String) {
 }
 
 @Composable
-fun SectionHeader(title: String, isFavorite: Boolean = false) {
+fun SectionHeader(title: String, isFavorite: Boolean = false, onClick: (() -> Unit)? = null) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .clickable { onClick?.invoke() }
             .padding(start = 16.dp, end = 16.dp, top = 32.dp, bottom = 16.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically

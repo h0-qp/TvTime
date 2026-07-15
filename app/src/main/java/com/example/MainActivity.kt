@@ -32,6 +32,11 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.example.ui.screens.tvshows.TvShowsScreen
 import com.example.ui.screens.movies.MoviesScreen
+import com.example.ui.screens.profile.AllTvShowsViewModel
+import com.example.ui.screens.profile.AllMoviesViewModel
+import com.example.ui.screens.profile.AllTvShowsScreen
+import com.example.ui.screens.profile.AllMoviesScreen
+
 import com.example.ui.theme.TrackVerseTheme
 import com.example.ui.theme.GoldYellow
 import com.example.ui.theme.DarkGrey
@@ -202,12 +207,36 @@ fun TrackVerseApp(appContainer: com.example.data.AppContainer) {
                     authRepository = appContainer.authRepository,
                     firestoreRepository = appContainer.firestoreRepository,
                     onNavigateToDetails = { mediaType, mediaId -> navController.navigate("details/$mediaType/$mediaId") },
+                    onNavigateToAllTvShows = { navController.navigate("all_tv_shows") },
+                    onNavigateToAllMovies = { navController.navigate("all_movies") },
                     onSignOut = {
                         navController.navigate("auth") {
                             popUpTo(0) { inclusive = true }
                         }
                     }
                 ) 
+            }
+            
+            composable("all_tv_shows") {
+                val viewModel = androidx.lifecycle.viewmodel.compose.viewModel<AllTvShowsViewModel> {
+                    AllTvShowsViewModel(appContainer.firestoreRepository, appContainer.mediaRepository)
+                }
+                AllTvShowsScreen(
+                    viewModel = viewModel,
+                    onBackClick = { navController.popBackStack() },
+                    onShowClick = { id -> navController.navigate("details/tv/$id") }
+                )
+            }
+            
+            composable("all_movies") {
+                val viewModel = androidx.lifecycle.viewmodel.compose.viewModel<AllMoviesViewModel> {
+                    AllMoviesViewModel(appContainer.firestoreRepository)
+                }
+                AllMoviesScreen(
+                    viewModel = viewModel,
+                    onBackClick = { navController.popBackStack() },
+                    onMovieClick = { id -> navController.navigate("details/movie/$id") }
+                )
             }
             composable(
                 route = "details/{mediaType}/{mediaId}",
