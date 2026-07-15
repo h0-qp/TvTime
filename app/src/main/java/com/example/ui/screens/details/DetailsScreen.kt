@@ -28,6 +28,7 @@ import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.*
 import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -70,6 +71,8 @@ fun DetailsScreen(
         factory = DetailsViewModelFactory(repository, firestoreRepository, mediaId, mediaType)
     )
     val uiState by viewModel.uiState.collectAsState()
+    var selectedTab by rememberSaveable { mutableIntStateOf(0) }
+    val detailsScrollState = rememberScrollState()
     var showBottomSheet by remember { mutableStateOf(false) }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var showAddSuccess by remember { mutableStateOf(false) }
@@ -194,7 +197,7 @@ fun DetailsScreen(
                         Column(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .verticalScroll(rememberScrollState())
+                                .verticalScroll(detailsScrollState)
                         ) {
                         val durationStr = if (mediaType == "tv") {
                             val seasonCount = item.number_of_seasons ?: item.seasons?.count { it.season_number > 0 } ?: 0
@@ -314,7 +317,6 @@ fun DetailsScreen(
                         Spacer(modifier = Modifier.height(8.dp))
                             Spacer(modifier = Modifier.height(24.dp))
                             
-                            var selectedTab by remember { mutableIntStateOf(0) }
                             val tabs = if (mediaType == "tv") listOf("حول", "الحلقات") else listOf("حول", "أكثر")
 
                             TabRow(
