@@ -203,7 +203,8 @@ fun DetailsScreen(
                         ) {
                         val durationStr = if (mediaType == "tv") {
                             val seasonCount = item.number_of_seasons ?: item.seasons?.count { it.season_number > 0 } ?: 0
-                            "$seasonCount موسم/مواسم"
+                            val statusSuffix = if (item.status == "Ended" || item.status == "Canceled") " • منتهي" else ""
+                            "$seasonCount موسم/مواسم$statusSuffix"
                         } else {
                             val hours = (item.runtime ?: 0) / 60
                             val mins = (item.runtime ?: 0) % 60
