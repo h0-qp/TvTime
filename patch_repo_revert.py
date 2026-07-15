@@ -6,18 +6,18 @@ with open(file_path, "r") as f:
 
 target = """        val listener = db.collection("users").document(uid)
             .collection("watched_episodes")
+            .orderBy("watchedAt", com.google.firebase.firestore.Query.Direction.DESCENDING)
+            .limit(10)
             .addSnapshotListener { snapshot, error ->"""
 
 replacement = """        val listener = db.collection("users").document(uid)
             .collection("watched_episodes")
-            .orderBy("watchedAt", com.google.firebase.firestore.Query.Direction.DESCENDING)
-            .limit(10)
             .addSnapshotListener { snapshot, error ->"""
 
 if target in content:
     content = content.replace(target, replacement)
     with open(file_path, "w") as f:
         f.write(content)
-    print("Success Repo")
+    print("Success Repo Revert")
 else:
     print("Target not found in Repo")

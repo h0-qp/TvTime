@@ -115,6 +115,8 @@ class FirestoreRepository {
         }
         val listener = db.collection("users").document(uid)
             .collection("watched_episodes")
+            .orderBy("watchedAt", com.google.firebase.firestore.Query.Direction.DESCENDING)
+            .limit(10)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
                     trySend(emptyList())
