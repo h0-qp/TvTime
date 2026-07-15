@@ -294,7 +294,9 @@ class TvShowsViewModel(
                 val upcomingEpisodes = deferredUpcoming.awaitAll().filterNotNull().sortedBy { it.daysDifference }
 
                 // Sort history descending
-                watchedHistory.sortByDescending { it.watchedAt }
+                watchedHistory.sortWith(compareByDescending<WatchedEpisodeData> { it.watchedAt }
+                    .thenByDescending { it.seasonNumber }
+                    .thenByDescending { it.episodeNumber })
 
                 _uiState.value = TvShowsUiState.Success(
                     upcomingEpisodes = upcomingEpisodes,
