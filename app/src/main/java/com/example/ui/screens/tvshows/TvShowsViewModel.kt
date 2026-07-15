@@ -167,54 +167,98 @@ class TvShowsViewModel(
 
                     // Find Watch Next
                     val lastWatched = showWatchedEps.last()
-                    // Fetch season details if not cached
-                    if (!seasonDetailsMap.containsKey("${show.showId}_${lastWatched.seasonNumber}")) {
-                        val seasonResult = repository.getSeasonDetails(apiKey, show.showId.toIntOrNull() ?: 0, lastWatched.seasonNumber)
-                        val seasonInfo = seasonResult.getOrNull()
-                        if (seasonInfo != null) {
-                            seasonDetailsMap["${show.showId}_${lastWatched.seasonNumber}"] = seasonInfo.episodes
+                    var nextEpisodeFound: Episode? = null
+                    var foundInSeason: Int = -1
+
+                    val candidateSeasons = details.seasons?.filter { it.season_number > 0 }?.sortedBy { it.season_number } ?: emptyList()
+
+                    if (candidateSeasons.isNotEmpty()) {
+                        for (season in candidateSeasons) {
+                            val watchedInSeason = showWatchedEps.filter { it.seasonNumber == season.season_number }
+                            if (watchedInSeason.size >= season.episode_count) {
+                                continue
+                            }
+
+                            val cacheKey = "${show.showId}_${season.season_number}"
+                            if (!seasonDetailsMap.containsKey(cacheKey)) {
+                                val seasonResult = repository.getSeasonDetails(apiKey, show.showId.toIntOrNull() ?: 0, season.season_number)
+                                val seasonInfo = seasonResult.getOrNull()
+                                if (seasonInfo != null) {
+                                    seasonDetailsMap[cacheKey] = seasonInfo.episodes
+                                }
+                            }
+
+                            val seasonEpisodes = seasonDetailsMap[cacheKey] ?: emptyList()
+                            val candidate = seasonEpisodes.filter { ep ->
+                                val isEpWatched = showWatchedEps.any { it.seasonNumber == season.season_number && it.episodeNumber == ep.episode_number }
+                                if (isEpWatched) return@filter false
+
+                                val epAirDate = try { ep.air_date?.let { LocalDate.parse(it) } } catch (e: Exception) { null }
+                                val hasAired = epAirDate == null || !epAirDate.isAfter(today)
+                                hasAired
+                            }.minByOrNull { it.episode_number }
+
+                            if (candidate != null) {
+                                nextEpisodeFound = candidate
+                                foundInSeason = season.season_number
+                                break
+                            }
                         }
                     }
 
-                    val currentSeasonEpisodes = seasonDetailsMap["${show.showId}_${lastWatched.seasonNumber}"] ?: emptyList()
-                    val nextEpInSameSeason = currentSeasonEpisodes.find { it.episode_number == lastWatched.episodeNumber + 1 }
-                    
-                    if (nextEpInSameSeason != null) {
-                        val isRecent = (System.currentTimeMillis() - lastWatched.watchedAt) < 30L * 24 * 60 * 60 * 1000 // 30 days
+                    if (nextEpisodeFound == null) {
+                        val cacheKey = "${show.showId}_${lastWatched.seasonNumber}"
+                        if (!seasonDetailsMap.containsKey(cacheKey)) {
+                            val seasonResult = repository.getSeasonDetails(apiKey, show.showId.toIntOrNull() ?: 0, lastWatched.seasonNumber)
+                            val seasonInfo = seasonResult.getOrNull()
+                            if (seasonInfo != null) {
+                                seasonDetailsMap[cacheKey] = seasonInfo.episodes
+                            }
+                        }
+                        val currentSeasonEpisodes = seasonDetailsMap[cacheKey] ?: emptyList()
+                        val nextEpInSameSeason = currentSeasonEpisodes.find { it.episode_number == lastWatched.episodeNumber + 1 }
+                        
+                        if (nextEpInSameSeason != null) {
+                            val epAirDate = try { nextEpInSameSeason.air_date?.let { LocalDate.parse(it) } } catch (e: Exception) { null }
+                            val hasAired = epAirDate == null || !epAirDate.isAfter(today)
+                            if (hasAired) {
+                                nextEpisodeFound = nextEpInSameSeason
+                                foundInSeason = lastWatched.seasonNumber
+                            }
+                        } else {
+                            val nextSeasonKey = "${show.showId}_${lastWatched.seasonNumber + 1}"
+                            if (!seasonDetailsMap.containsKey(nextSeasonKey)) {
+                                val seasonResult2 = repository.getSeasonDetails(apiKey, show.showId.toIntOrNull() ?: 0, lastWatched.seasonNumber + 1)
+                                val seasonInfo2 = seasonResult2.getOrNull()
+                                if (seasonInfo2 != null) {
+                                    seasonDetailsMap[nextSeasonKey] = seasonInfo2.episodes
+                                }
+                            }
+                            val nextSeasonEpisodes = seasonDetailsMap[nextSeasonKey] ?: emptyList()
+                            val firstEpNextSeason = nextSeasonEpisodes.find { it.episode_number == 1 }
+                            if (firstEpNextSeason != null) {
+                                val epAirDate = try { firstEpNextSeason.air_date?.let { LocalDate.parse(it) } } catch (e: Exception) { null }
+                                val hasAired = epAirDate == null || !epAirDate.isAfter(today)
+                                if (hasAired) {
+                                    nextEpisodeFound = firstEpNextSeason
+                                    foundInSeason = lastWatched.seasonNumber + 1
+                                }
+                            }
+                        }
+                    }
+
+                    if (nextEpisodeFound != null) {
+                        val isRecent = (System.currentTimeMillis() - lastWatched.watchedAt) < 30L * 24 * 60 * 60 * 1000
                         val nextData = NextEpisodeData(
                             showId = show.showId,
                             showName = details.name ?: "Unknown",
                             backdropPath = details.backdrop_path,
                             posterPath = details.poster_path,
-                            seasonNumber = lastWatched.seasonNumber,
-                            episodeNumber = nextEpInSameSeason.episode_number,
-                            episodeName = nextEpInSameSeason.name ?: "Episode ${nextEpInSameSeason.episode_number}"
+                            seasonNumber = foundInSeason,
+                            episodeNumber = nextEpisodeFound.episode_number,
+                            episodeName = nextEpisodeFound.name ?: "Episode ${nextEpisodeFound.episode_number}"
                         )
                         if (isRecent) watchNext.add(nextData) else notWatchedForAWhile.add(nextData)
-                    } else {
-                        // Check next season
-                        if (!seasonDetailsMap.containsKey("${show.showId}_${lastWatched.seasonNumber + 1}")) {
-                            val seasonResult2 = repository.getSeasonDetails(apiKey, show.showId.toIntOrNull() ?: 0, lastWatched.seasonNumber + 1)
-                            val seasonInfo2 = seasonResult2.getOrNull()
-                            if (seasonInfo2 != null) {
-                                seasonDetailsMap["${show.showId}_${lastWatched.seasonNumber + 1}"] = seasonInfo2.episodes
-                            }
-                        }
-                        val nextSeasonEpisodes = seasonDetailsMap["${show.showId}_${lastWatched.seasonNumber + 1}"] ?: emptyList()
-                        val firstEpNextSeason = nextSeasonEpisodes.find { it.episode_number == 1 }
-                        if (firstEpNextSeason != null) {
-                            val isRecent = (System.currentTimeMillis() - lastWatched.watchedAt) < 30L * 24 * 60 * 60 * 1000
-                            val nextData = NextEpisodeData(
-                                showId = show.showId,
-                                showName = details.name ?: "Unknown",
-                                backdropPath = details.backdrop_path,
-                                posterPath = details.poster_path,
-                                seasonNumber = lastWatched.seasonNumber + 1,
-                                episodeNumber = 1,
-                                episodeName = firstEpNextSeason.name ?: "Episode 1"
-                            )
-                            if (isRecent) watchNext.add(nextData) else notWatchedForAWhile.add(nextData)
-                        }
                     }
                 }
 

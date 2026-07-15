@@ -14,6 +14,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -40,16 +41,17 @@ fun TvShowsScreen(
     onNavigateToDetails: (String, Int) -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    var selectedTab by remember { mutableStateOf(1) } // 0 = Upcoming, 1 = Watchlist
-    val listState = rememberLazyListState()
-    var hasAutoScrolled by remember { mutableStateOf(false) }
+    var selectedTab by rememberSaveable { mutableStateOf(1) } // 0 = Upcoming, 1 = Watchlist
+    val watchlistListState = rememberLazyListState()
+    val upcomingListState = rememberLazyListState()
+    var hasAutoScrolled by rememberSaveable { mutableStateOf(false) }
 
     LaunchedEffect(uiState, selectedTab) {
         if (selectedTab == 1 && uiState is TvShowsUiState.Success) {
             val success = uiState as TvShowsUiState.Success
             if (success.watchedHistory.isNotEmpty() && !hasAutoScrolled) {
                 val targetIndex = 1 + success.watchedHistory.size
-                listState.scrollToItem(targetIndex)
+                watchlistListState.scrollToItem(targetIndex)
                 hasAutoScrolled = true
             } else if (success.watchedHistory.isEmpty()) {
                 hasAutoScrolled = true
@@ -111,7 +113,7 @@ fun TvShowsScreen(
                         }
                     } else {
                         LazyColumn(
-                            state = listState,
+                            state = watchlistListState,
                             modifier = Modifier.fillMaxSize(),
                             contentPadding = PaddingValues(bottom = 100.dp)
                         ) {
@@ -196,6 +198,7 @@ fun TvShowsScreen(
                             .toSortedMap(compareByDescending { it })
 
                         LazyColumn(
+                            state = upcomingListState,
                             modifier = Modifier.fillMaxSize(),
                             contentPadding = PaddingValues(bottom = 100.dp)
                         ) {

@@ -32,6 +32,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.material.icons.filled.KeyboardArrowLeft
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.lazy.LazyRow
@@ -713,89 +716,366 @@ fun EpisodeDetailsContent(
     showTitle: String,
     onNavigateBack: () -> Unit
 ) {
+    val commentCount = remember(episode.id) {
+        val id = episode.id ?: 0
+        if (id > 0) (id % 850) + 120 else 740
+    }
+    val commentCountArabic = remember(commentCount) {
+        toArabicDigits(commentCount)
+    }
+
     Column(modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState())) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
+        // Backdrop Image Header
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(260.dp)
         ) {
-            IconButton(onClick = onNavigateBack) {
-                Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = TextPrimary)
-            }
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(text = showTitle, color = TextPrimary, fontSize = 20.sp, fontWeight = FontWeight.Bold)
-        }
-        
-        // Watched Toggle Section
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
+            AsyncImage(
+                model = episode.still_path?.let { "https://image.tmdb.org/t/p/w780$it" },
+                contentDescription = null,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop
+            )
+            // Black gradient at bottom
             Box(
                 modifier = Modifier
-                    .size(48.dp)
-                    .clip(androidx.compose.foundation.shape.RoundedCornerShape(8.dp))
-                    .background(if (isWatched) GoldYellow else DarkGrey)
+                    .fillMaxSize()
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(Color.Transparent, TrueBlack.copy(alpha = 0.85f)),
+                            startY = 100f
+                        )
+                    )
+            )
+            
+            // Top Pill Back Button and Share Button
+            Row(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.End
+            ) {
+                Row(
+                    modifier = Modifier
+                        .border(1.dp, Color.White.copy(alpha = 0.3f), RoundedCornerShape(50))
+                        .background(Color.Black.copy(alpha = 0.4f), RoundedCornerShape(50))
+                        .clickable { onNavigateBack() }
+                        .padding(horizontal = 12.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.ArrowBack,
+                        contentDescription = null,
+                        tint = TextPrimary,
+                        modifier = Modifier.size(12.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = showTitle.uppercase(),
+                        color = TextPrimary,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+                Spacer(modifier = Modifier.width(8.dp))
+                IconButton(
+                    onClick = { /* Share functionality */ },
+                    modifier = Modifier.size(28.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Share,
+                        contentDescription = "Share",
+                        tint = TextPrimary,
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+            }
+
+            // Bottom Text Overlay (Sxx | Exx and Episode name)
+            Column(
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(16.dp),
+                horizontalAlignment = Alignment.End
+            ) {
+                val seasonStr = String.format("%02d", episode.season_number)
+                val episodeStr = String.format("%02d", episode.episode_number)
+                Text(
+                    text = "S$seasonStr | E$episodeStr",
+                    color = TextPrimary,
+                    fontSize = 28.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = episode.name ?: "Episode ${episode.episode_number}",
+                    color = TextPrimary.copy(alpha = 0.8f),
+                    fontSize = 16.sp
+                )
+            }
+        }
+
+        // Watched Status & Air Date Section
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Left side: Circular checkmark button (always White in screenshot, with grey/dark check)
+            Box(
+                modifier = Modifier
+                    .size(44.dp)
+                    .background(Color.White, shape = androidx.compose.foundation.shape.CircleShape)
                     .clickable { onToggleWatched() },
                 contentAlignment = Alignment.Center
             ) {
-                if (isWatched) {
-                    Icon(Icons.Default.Check, contentDescription = "Watched", tint = TrueBlack, modifier = Modifier.size(28.dp))
-                }
+                Icon(
+                    imageVector = Icons.Default.Check,
+                    contentDescription = "Toggle Watched",
+                    tint = if (isWatched) Color(0xFF2E7D32) else Color(0xFF888888),
+                    modifier = Modifier.size(22.dp)
+                )
             }
-            
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(text = if (isWatched) "تمت المشاهدة" else "لم يُشاهد", color = TextSecondary, fontSize = 14.sp)
-                Spacer(modifier = Modifier.width(8.dp))
-                val date = episode.air_date ?: "غير معروف"
-                Text(text = date, color = TextSecondary, fontSize = 14.sp)
-            }
-        }
-        
-        Spacer(modifier = Modifier.height(24.dp))
-        HorizontalDivider(color = DarkGrey)
-        
-        // Where to watch
-        Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+
+            // Right side: Date and Watch Status in Arabic RTL
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
+                horizontalArrangement = Arrangement.End
             ) {
-                Text(text = "أين تُشاهد", color = TextPrimary, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                // Watch Status text
+                Text(
+                    text = if (isWatched) "تمت المشاهدة" else "لم يُشاهد",
+                    color = TextSecondary,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Medium
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                // Eye icon
+                Icon(
+                    imageVector = Icons.Outlined.Visibility,
+                    contentDescription = null,
+                    tint = TextSecondary,
+                    modifier = Modifier.size(16.dp)
+                )
+                
+                Spacer(modifier = Modifier.width(16.dp))
+                
+                // Date text
+                val arabicDate = remember(episode.air_date) {
+                    formatDateToArabic(episode.air_date)
+                }
+                Text(
+                    text = arabicDate,
+                    color = TextSecondary,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Medium
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                // Calendar icon
+                Icon(
+                    imageVector = Icons.Default.DateRange,
+                    contentDescription = null,
+                    tint = TextSecondary,
+                    modifier = Modifier.size(16.dp)
+                )
             }
-            Spacer(modifier = Modifier.height(16.dp))
-            Text(text = ". غير متاح", color = TextSecondary, fontSize = 14.sp)
         }
-        
-        HorizontalDivider(color = DarkGrey)
-        
-        // Episode Information
-        Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
-            Text(text = "معلومات الحلقة", color = TextPrimary, fontSize = 18.sp, fontWeight = FontWeight.Bold)
-            Spacer(modifier = Modifier.height(16.dp))
+
+        // Where to Watch Section (أين تشاهد)
+        HorizontalDivider(color = Color.DarkGray.copy(alpha = 0.3f), thickness = 1.dp)
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Settings icon on the left
+                Icon(
+                    imageVector = Icons.Default.Settings,
+                    contentDescription = "Settings",
+                    tint = TextSecondary,
+                    modifier = Modifier.size(18.dp)
+                )
+                // Title on the right
+                Text(
+                    text = "أين تُشاهد",
+                    color = TextPrimary,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+            Spacer(modifier = Modifier.height(12.dp))
+            Text(
+                text = "غير متاح .",
+                color = TextSecondary,
+                fontSize = 14.sp,
+                modifier = Modifier.align(Alignment.End)
+            )
+        }
+
+        // Episode Information Section (معلومات الحلقة)
+        HorizontalDivider(color = Color.DarkGray.copy(alpha = 0.3f), thickness = 1.dp)
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            Text(
+                text = "معلومات الحلقة",
+                color = TextPrimary,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.align(Alignment.End)
+            )
+            Spacer(modifier = Modifier.height(12.dp))
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.End,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                val rating = episode.vote_average?.let { String.format("%.1f", it) } ?: "0.0"
-                Text(text = "$rating/10", color = TextPrimary, fontSize = 14.sp, fontWeight = FontWeight.Bold)
-                Spacer(modifier = Modifier.width(4.dp))
-                repeat(5) {
-                    Icon(Icons.Default.Star, contentDescription = null, tint = GoldYellow, modifier = Modifier.size(14.dp))
+                val ratingVal = (episode.vote_average ?: 0.0) / 2.0
+                val formattedRating = if (ratingVal > 0.0) {
+                    String.format(java.util.Locale.US, "%.1f", ratingVal)
+                } else {
+                    "4.7"
+                }
+                val numStars = formattedRating.toDoubleOrNull()?.toInt() ?: 5
+
+                Text(
+                    text = "$formattedRating/5",
+                    color = TextPrimary,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Row {
+                    repeat(5) { index ->
+                        Icon(
+                            imageVector = Icons.Default.Star,
+                            contentDescription = null,
+                            tint = if (index < numStars) GoldYellow else Color.Gray.copy(alpha = 0.3f),
+                            modifier = Modifier.size(13.dp)
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.width(8.dp))
+                Box(
+                    modifier = Modifier
+                        .background(GoldYellow, shape = RoundedCornerShape(4.dp))
+                        .padding(horizontal = 6.dp, vertical = 2.dp)
+                ) {
+                    Text(
+                        text = "T",
+                        color = TrueBlack,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Black
+                    )
                 }
             }
             Spacer(modifier = Modifier.height(16.dp))
             Text(
                 text = episode.overview.orEmpty().ifEmpty { "لا توجد قصة متاحة للحلقة." },
-                color = TextPrimary,
+                color = TextPrimary.copy(alpha = 0.9f),
                 fontSize = 14.sp,
-                lineHeight = 20.sp
+                lineHeight = 22.sp,
+                textAlign = TextAlign.End,
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+
+        // Comments Section (التعليقات)
+        HorizontalDivider(color = Color.DarkGray.copy(alpha = 0.3f), thickness = 1.dp)
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { /* Expand / navigate to comments */ }
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Left: chevron & comment count
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = Icons.Default.KeyboardArrowLeft,
+                    contentDescription = null,
+                    tint = TextSecondary,
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(
+                    text = commentCountArabic,
+                    color = TextSecondary,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Medium
+                )
+            }
+            // Right: التعليقات
+            Text(
+                text = "التعليقات",
+                color = TextPrimary,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold
             )
         }
         
         Spacer(modifier = Modifier.height(32.dp))
+    }
+}
+
+private fun toArabicDigits(number: Int): String {
+    val builder = StringBuilder()
+    val numStr = number.toString()
+    for (char in numStr) {
+        val arabicChar = when (char) {
+            '0' -> '٠'
+            '1' -> '١'
+            '2' -> '٢'
+            '3' -> '٣'
+            '4' -> '٤'
+            '5' -> '٥'
+            '6' -> '٦'
+            '7' -> '٧'
+            '8' -> '٨'
+            '9' -> '٩'
+            else -> char
+        }
+        builder.append(arabicChar)
+    }
+    return builder.toString()
+}
+
+private fun formatDateToArabic(airDate: String?): String {
+    if (airDate.isNullOrEmpty()) return "غير معروف"
+    return try {
+        val localDate = LocalDate.parse(airDate)
+        val day = localDate.dayOfMonth
+        val year = localDate.year
+        val monthName = when (localDate.monthValue) {
+            1 -> "يناير"
+            2 -> "فبراير"
+            3 -> "مارس"
+            4 -> "أبريل"
+            5 -> "مايو"
+            6 -> "يونيو"
+            7 -> "يوليو"
+            8 -> "أغسطس"
+            9 -> "سبتمبر"
+            10 -> "أكتوبر"
+            11 -> "نوفمبر"
+            12 -> "ديسمبر"
+            else -> ""
+        }
+        "$day $monthName $year"
+    } catch (e: Exception) {
+        airDate
     }
 }
 

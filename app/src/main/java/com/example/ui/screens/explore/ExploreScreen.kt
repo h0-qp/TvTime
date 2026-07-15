@@ -33,6 +33,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -70,8 +72,14 @@ fun ExploreScreen(
     val uiState by viewModel.uiState.collectAsState()
     val searchQuery by viewModel.searchQuery.collectAsState()
     
-    var selectedTab by remember { mutableStateOf("تغذية") }
+    var selectedTab by rememberSaveable { mutableStateOf("تغذية") }
     val tabs = listOf("تغذية", "اكتشف", "مجموعات", "نشاط")
+
+    val discoverScrollState = rememberScrollState()
+    val feedLazyListState = rememberLazyListState()
+    val collectionsLazyListState = rememberLazyListState()
+    val activityScrollState = rememberScrollState()
+    val searchResultsLazyListState = rememberLazyListState()
 
     Column(
         modifier = modifier
@@ -122,13 +130,13 @@ fun ExploreScreen(
         // Content
         Box(modifier = Modifier.fillMaxSize()) {
             if (searchQuery.isNotBlank()) {
-                SearchResultsContent(uiState, onNavigateToDetails)
+                SearchResultsContent(uiState, onNavigateToDetails, searchResultsLazyListState)
             } else {
                 when (selectedTab) {
-                    "اكتشف" -> DiscoverTabContent(uiState, viewModel, onNavigateToDetails, onNavigateToDiscoverMore)
-                    "تغذية" -> FeedTabContent(uiState, viewModel, onNavigateToDetails)
-                    "مجموعات" -> CollectionsTabContent(uiState)
-                    "نشاط" -> ActivityTabContent(uiState, viewModel, onNavigateToDetails)
+                    "اكتشف" -> DiscoverTabContent(uiState, viewModel, onNavigateToDetails, onNavigateToDiscoverMore, discoverScrollState)
+                    "تغذية" -> FeedTabContent(uiState, viewModel, onNavigateToDetails, feedLazyListState)
+                    "مجموعات" -> CollectionsTabContent(uiState, collectionsLazyListState)
+                    "نشاط" -> ActivityTabContent(uiState, viewModel, onNavigateToDetails, activityScrollState)
                 }
             }
         }
@@ -136,7 +144,11 @@ fun ExploreScreen(
 }
 
 @Composable
-fun SearchResultsContent(uiState: ExploreUiState, onNavigateToDetails: (String, Int) -> Unit) {
+fun SearchResultsContent(
+    uiState: ExploreUiState,
+    onNavigateToDetails: (String, Int) -> Unit,
+    lazyListState: androidx.compose.foundation.lazy.LazyListState
+) {
     when (uiState) {
         is ExploreUiState.Loading -> {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -159,6 +171,7 @@ fun SearchResultsContent(uiState: ExploreUiState, onNavigateToDetails: (String, 
                 }
             } else {
                 LazyColumn(
+                    state = lazyListState,
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(bottom = 16.dp)
                 ) {
@@ -193,7 +206,13 @@ fun TabButton(title: String, isSelected: Boolean, onClick: () -> Unit) {
 }
 
 @Composable
-fun DiscoverTabContent(uiState: ExploreUiState, viewModel: ExploreViewModel, onNavigateToDetails: (String, Int) -> Unit, onNavigateToDiscoverMore: () -> Unit) {
+fun DiscoverTabContent(
+    uiState: ExploreUiState,
+    viewModel: ExploreViewModel,
+    onNavigateToDetails: (String, Int) -> Unit,
+    onNavigateToDiscoverMore: () -> Unit,
+    scrollState: androidx.compose.foundation.ScrollState
+) {
     when (uiState) {
         is ExploreUiState.Loading -> {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -204,7 +223,7 @@ fun DiscoverTabContent(uiState: ExploreUiState, viewModel: ExploreViewModel, onN
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
+                    .verticalScroll(scrollState)
                     .padding(bottom = 16.dp)
             ) {
                 DiscoverSection(title = "أفضل البرامج لك", items = uiState.upcomingTvShows, currentState = uiState, viewModel = viewModel, onNavigateToDetails = onNavigateToDetails)
@@ -320,11 +339,17 @@ fun BrowseAllButton(text: String, onClick: () -> Unit) {
 }
 
 @Composable
-fun FeedTabContent(uiState: ExploreUiState, viewModel: ExploreViewModel, onNavigateToDetails: (String, Int) -> Unit) {
+fun FeedTabContent(
+    uiState: ExploreUiState,
+    viewModel: ExploreViewModel,
+    onNavigateToDetails: (String, Int) -> Unit,
+    lazyListState: androidx.compose.foundation.lazy.LazyListState
+) {
     if (uiState is ExploreUiState.Success) {
         val feedItems = uiState.feedItems
         
         LazyColumn(
+            state = lazyListState,
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
         ) {
@@ -432,7 +457,10 @@ fun FeedCard(item: MediaItem, currentState: ExploreUiState.Success, onToggleAdd:
 }
 
 @Composable
-fun CollectionsTabContent(uiState: ExploreUiState) {
+fun CollectionsTabContent(
+    uiState: ExploreUiState,
+    lazyListState: androidx.compose.foundation.lazy.LazyListState
+) {
     if (uiState is ExploreUiState.Success) {
         val genres = uiState.genres
         
@@ -451,6 +479,7 @@ fun CollectionsTabContent(uiState: ExploreUiState) {
             }
             
             LazyColumn(
+                state = lazyListState,
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
@@ -509,14 +538,19 @@ fun CollectionCard(genre: com.example.data.remote.Genre) {
 }
 
 @Composable
-fun ActivityTabContent(uiState: ExploreUiState, viewModel: ExploreViewModel, onNavigateToDetails: (String, Int) -> Unit) {
+fun ActivityTabContent(
+    uiState: ExploreUiState,
+    viewModel: ExploreViewModel,
+    onNavigateToDetails: (String, Int) -> Unit,
+    scrollState: androidx.compose.foundation.ScrollState
+) {
     if (uiState is ExploreUiState.Success) {
         val activityItems = uiState.activityItems
         
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .verticalScroll(rememberScrollState())
+                .verticalScroll(scrollState)
                 .padding(horizontal = 16.dp, vertical = 8.dp)
         ) {
             activityItems.forEach { item ->

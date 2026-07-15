@@ -26,6 +26,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -134,8 +137,13 @@ fun MoviesScreen(
         factory = MoviesViewModelFactory(repository, firestoreRepository)
     )
     val uiState by viewModel.uiState.collectAsState()
-    var selectedTab by remember { mutableStateOf(1) } // 0 = Upcoming (المرتقبة), 1 = Watchlist (قائمة المشاهدة)
-    var isGridView by remember { mutableStateOf(false) }
+    var selectedTab by rememberSaveable { mutableStateOf(1) } // 0 = Upcoming (المرتقبة), 1 = Watchlist (قائمة المشاهدة)
+    var isGridView by rememberSaveable { mutableStateOf(false) }
+
+    val watchlistListState = rememberLazyListState()
+    val watchlistGridState = rememberLazyGridState()
+    val upcomingListState = rememberLazyListState()
+    val upcomingGridState = rememberLazyGridState()
 
     Column(
         modifier = modifier
@@ -263,6 +271,7 @@ fun MoviesScreen(
                             Crossfade(targetState = isGridView, animationSpec = tween(300)) { grid ->
                                 if (grid) {
                                     LazyVerticalGrid(
+                                        state = watchlistGridState,
                                         columns = GridCells.Fixed(3),
                                         modifier = Modifier.fillMaxSize(),
                                         contentPadding = PaddingValues(12.dp),
@@ -284,6 +293,7 @@ fun MoviesScreen(
                                     }
                                 } else {
                                     LazyColumn(
+                                        state = watchlistListState,
                                         modifier = Modifier.fillMaxSize(),
                                         contentPadding = PaddingValues(bottom = 16.dp)
                                     ) {
@@ -317,6 +327,7 @@ fun MoviesScreen(
                             Crossfade(targetState = isGridView, animationSpec = tween(300)) { grid ->
                                 if (grid) {
                                     LazyVerticalGrid(
+                                        state = upcomingGridState,
                                         columns = GridCells.Fixed(3),
                                         modifier = Modifier.fillMaxSize(),
                                         contentPadding = PaddingValues(12.dp),
@@ -343,6 +354,7 @@ fun MoviesScreen(
                                     }
                                 } else {
                                     LazyColumn(
+                                        state = upcomingListState,
                                         modifier = Modifier.fillMaxSize(),
                                         contentPadding = PaddingValues(bottom = 16.dp)
                                     ) {

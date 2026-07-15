@@ -11,6 +11,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -40,7 +42,10 @@ fun DiscoverMoreScreen(
     )
     val uiState by viewModel.uiState.collectAsState()
     
-    var selectedTab by remember { mutableStateOf("مسلسلات") }
+    var selectedTab by rememberSaveable { mutableStateOf("مسلسلات") }
+
+    val tvGridState = rememberLazyGridState()
+    val movieGridState = rememberLazyGridState()
 
     Column(
         modifier = Modifier
@@ -121,8 +126,10 @@ fun DiscoverMoreScreen(
         } else {
             val items = if (selectedTab == "مسلسلات") uiState.tvShows else uiState.movies
             val isLoadingMore = if (selectedTab == "مسلسلات") uiState.isLoadingMoreTv else uiState.isLoadingMoreMovies
+            val gridState = if (selectedTab == "مسلسلات") tvGridState else movieGridState
             
             LazyVerticalGrid(
+                state = gridState,
                 columns = GridCells.Fixed(3),
                 contentPadding = PaddingValues(16.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),

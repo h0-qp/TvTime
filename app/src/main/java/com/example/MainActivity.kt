@@ -19,6 +19,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -68,10 +69,26 @@ class MainActivity : ComponentActivity() {
 fun TrackVerseApp(appContainer: com.example.data.AppContainer) {
     val navController = rememberNavController()
     val isUserLoggedIn = appContainer.authRepository.currentUser != null
+    
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val sharedPrefs = androidx.compose.runtime.remember {
+        context.getSharedPreferences("app_prefs", android.content.Context.MODE_PRIVATE)
+    }
+    var onboardingCompleted by androidx.compose.runtime.remember {
+        androidx.compose.runtime.mutableStateOf(sharedPrefs.getBoolean("onboarding_completed", false))
+    }
 
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
     val showBottomBar = currentRoute in bottomNavItems.map { it.route }
+
+    val startDestination = if (!onboardingCompleted) {
+        "onboarding"
+    } else if (isUserLoggedIn) {
+        Screen.TvShows.route
+    } else {
+        "auth"
+    }
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
@@ -112,9 +129,21 @@ fun TrackVerseApp(appContainer: com.example.data.AppContainer) {
     ) { innerPadding ->
         NavHost(
             navController = navController,
-            startDestination = if (isUserLoggedIn) Screen.TvShows.route else "auth",
+            startDestination = startDestination,
             modifier = Modifier.padding(innerPadding)
         ) {
+            composable("onboarding") {
+                com.example.ui.screens.onboarding.OnboardingScreen(
+                    onComplete = {
+                        sharedPrefs.edit().putBoolean("onboarding_completed", true).apply()
+                        onboardingCompleted = true
+                        val nextRoute = if (isUserLoggedIn) Screen.TvShows.route else "auth"
+                        navController.navigate(nextRoute) {
+                            popUpTo("onboarding") { inclusive = true }
+                        }
+                    }
+                )
+            }
             composable("auth") {
                 com.example.ui.screens.auth.AuthScreen(
                     authRepository = appContainer.authRepository,
