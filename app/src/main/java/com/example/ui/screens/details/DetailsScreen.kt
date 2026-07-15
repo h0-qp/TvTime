@@ -74,6 +74,26 @@ fun DetailsScreen(
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var showAddSuccess by remember { mutableStateOf(false) }
 
+    // Dialog state for auto-fill previous episodes
+    var showAutoFillDialog by remember { mutableStateOf(false) }
+    var pendingEpisodeToMarkWatched by remember { mutableStateOf<Pair<Int, Int>?>(null) }
+    var previousUnwatchedList by remember { mutableStateOf<List<Pair<Int, Int>>>(emptyList()) }
+
+    val onEpisodeClick: (Int, Int, Boolean) -> Unit = { seasonNum, epNum, isCurrentlyWatched ->
+        if (isCurrentlyWatched) {
+            viewModel.toggleEpisode(seasonNum, epNum)
+        } else {
+            val unwatched = viewModel.getPreviousUnwatchedEpisodes(seasonNum, epNum)
+            if (unwatched.isNotEmpty()) {
+                pendingEpisodeToMarkWatched = Pair(seasonNum, epNum)
+                previousUnwatchedList = unwatched
+                showAutoFillDialog = true
+            } else {
+                viewModel.toggleEpisode(seasonNum, epNum)
+            }
+        }
+    }
+
     val handleBack = {
         if (uiState is DetailsUiState.Success && (uiState as DetailsUiState.Success).selectedEpisodeDetails != null) {
             viewModel.selectEpisode(null)
@@ -152,10 +172,17 @@ fun DetailsScreen(
                 }
                 is DetailsUiState.Success -> {
                     if (state.selectedEpisodeDetails != null) {
+                        val isEpWatched = state.firestoreItem?.watchedEpisodes?.contains("S${state.selectedEpisodeDetails.season_number}E${state.selectedEpisodeDetails.episode_number}") == true
                         EpisodeDetailsContent(
                             episode = state.selectedEpisodeDetails,
-                            isWatched = state.firestoreItem?.watchedEpisodes?.contains("S${state.selectedEpisodeDetails.season_number}E${state.selectedEpisodeDetails.episode_number}") == true,
-                            onToggleWatched = { viewModel.toggleEpisode(state.selectedEpisodeDetails.season_number, state.selectedEpisodeDetails.episode_number) },
+                            isWatched = isEpWatched,
+                            onToggleWatched = { 
+                                onEpisodeClick(
+                                    state.selectedEpisodeDetails.season_number,
+                                    state.selectedEpisodeDetails.episode_number,
+                                    isEpWatched
+                                )
+                            },
                             showTitle = state.mediaItem.name ?: state.mediaItem.title ?: "Unknown",
                             onNavigateBack = { handleBack() }
                         )
@@ -436,10 +463,7 @@ fun DetailsScreen(
                                                             .clip(androidx.compose.foundation.shape.CircleShape)
                                                             .background(if (isWatched) Color(0xFF81C784) else Color.Transparent)
                                                             .border(2.dp, if (isWatched) Color(0xFF81C784) else TextSecondary, androidx.compose.foundation.shape.CircleShape)
-                                                            .clickable { 
-                                                                
-                                                                    viewModel.toggleEpisode(episode.season_number, episode.episode_number)
-                                                            },
+                                                            .clickable { onEpisodeClick(episode.season_number, episode.episode_number, isWatched) },
                                                         contentAlignment = Alignment.Center
                                                     ) {
                                                         if (isWatched) {
@@ -525,6 +549,117 @@ fun DetailsScreen(
                     }
                     if (text != "مشاركة") {
                         HorizontalDivider(color = DarkGrey)
+                    }
+                }
+            }
+        }
+    }
+
+    if (showAutoFillDialog) {
+        androidx.compose.ui.window.Dialog(
+            onDismissRequest = { 
+                showAutoFillDialog = false 
+                pendingEpisodeToMarkWatched = null
+                previousUnwatchedList = emptyList()
+            }
+        ) {
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp),
+                shape = RoundedCornerShape(16.dp),
+                color = DarkGrey
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = "تحديد الكل كمشاهدة؟",
+                        color = TextPrimary,
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text(
+                        text = "هل تريد تحديد هذه الحلقة وجميع الحلقات السابقة لها في هذا الموسم والمواسم السابقة كمشاهدة أيضاً؟",
+                        color = TextSecondary,
+                        fontSize = 14.sp,
+                        lineHeight = 22.sp,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Spacer(modifier = Modifier.height(24.dp))
+                    
+                    // Button 1: نعم، تحديد الكل
+                    Button(
+                        onClick = {
+                            val target = pendingEpisodeToMarkWatched
+                            if (target != null) {
+                                val allEpisodes = previousUnwatchedList + target
+                                viewModel.markEpisodesWatchedBatch(allEpisodes)
+                            }
+                            showAutoFillDialog = false
+                            pendingEpisodeToMarkWatched = null
+                            previousUnwatchedList = emptyList()
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = GoldYellow),
+                        shape = RoundedCornerShape(8.dp),
+                        modifier = Modifier.fillMaxWidth().height(48.dp)
+                    ) {
+                        Text(
+                            text = "نعم، تحديد الكل",
+                            color = TrueBlack,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    
+                    // Button 2: هذه الحلقة فقط
+                    Button(
+                        onClick = {
+                            val target = pendingEpisodeToMarkWatched
+                            if (target != null) {
+                                viewModel.toggleEpisode(target.first, target.second)
+                            }
+                            showAutoFillDialog = false
+                            pendingEpisodeToMarkWatched = null
+                            previousUnwatchedList = emptyList()
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
+                        shape = RoundedCornerShape(8.dp),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, TextSecondary),
+                        modifier = Modifier.fillMaxWidth().height(48.dp)
+                    ) {
+                        Text(
+                            text = "هذه الحلقة فقط",
+                            color = TextPrimary,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    
+                    // Button 3: إلغاء
+                    TextButton(
+                        onClick = {
+                            showAutoFillDialog = false
+                            pendingEpisodeToMarkWatched = null
+                            previousUnwatchedList = emptyList()
+                        },
+                        modifier = Modifier.fillMaxWidth().height(48.dp)
+                    ) {
+                        Text(
+                            text = "إلغاء",
+                            color = TextSecondary,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp
+                        )
                     }
                 }
             }

@@ -159,6 +159,54 @@ class DetailsViewModel(
         }
     }
 
+    fun getPreviousUnwatchedEpisodes(seasonNumber: Int, episodeNumber: Int): List<Pair<Int, Int>> {
+        val currentState = _uiState.value
+        if (currentState !is DetailsUiState.Success) return emptyList()
+        val mediaItem = currentState.mediaItem
+        val watchedList = currentState.firestoreItem?.watchedEpisodes ?: emptyList()
+        val seasons = mediaItem.seasons ?: emptyList()
+        
+        val previousUnwatched = mutableListOf<Pair<Int, Int>>()
+        for (season in seasons) {
+            val sNum = season.season_number
+            if (sNum <= 0) continue
+            if (sNum < seasonNumber) {
+                for (epNum in 1..season.episode_count) {
+                    val epKey = "S${sNum}E${epNum}"
+                    if (!watchedList.contains(epKey)) {
+                        previousUnwatched.add(Pair(sNum, epNum))
+                    }
+                }
+            } else if (sNum == seasonNumber) {
+                for (epNum in 1 until episodeNumber) {
+                    val epKey = "S${sNum}E${epNum}"
+                    if (!watchedList.contains(epKey)) {
+                        previousUnwatched.add(Pair(sNum, epNum))
+                    }
+                }
+            }
+        }
+        return previousUnwatched
+    }
+
+    fun markEpisodesWatchedBatch(episodes: List<Pair<Int, Int>>) {
+        val currentState = _uiState.value
+        if (currentState is DetailsUiState.Success) {
+            val item = currentState.mediaItem
+            viewModelScope.launch {
+                firestoreRepository.markEpisodesWatchedBatch(
+                    showId = item.id.toString(),
+                    showTitle = item.name ?: item.title ?: "Unknown",
+                    posterPath = item.poster_path,
+                    episodes = episodes
+                )
+                if (mediaType == "tv") {
+                    firestoreRepository.addTvShowToWatchlist(item.id.toString())
+                }
+            }
+        }
+    }
+
     fun toggleMovieWatched() {
         val currentState = _uiState.value
         if (currentState is DetailsUiState.Success && mediaType == "movie") {
