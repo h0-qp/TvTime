@@ -218,53 +218,59 @@ class FirestoreRepository {
         val uid = currentUserId ?: return
         if (episodes.isEmpty()) return
         
-        try {
-            val batch = db.batch()
-            
-            // 1. Mark each episode as watched
-            for ((seasonNumber, episodeNumber) in episodes) {
-                val docId = "${showId}_S${seasonNumber}E${episodeNumber}"
-                val docRef = db.collection("users").document(uid).collection("watched_episodes").document(docId)
-                batch.set(docRef, WatchedEpisode(showId, seasonNumber, episodeNumber, System.currentTimeMillis()))
-            }
-            
-            // 2. Fetch or update media item
+try {
+            // Fetch or update media item first
             val mediaRef = db.collection("users").document(uid).collection("media").document(showId)
             val snapshot = mediaRef.get().await()
-            
             val newEpisodeKeys = episodes.map { "S${it.first}E${it.second}" }
             
+            var currentMediaList = mutableListOf<String>()
             if (snapshot.exists()) {
                 val item = snapshot.toObject(FirestoreMediaItem::class.java)
                 if (item != null) {
-                    val currentList = item.watchedEpisodes.toMutableList()
-                    var changed = false
+                    currentMediaList = item.watchedEpisodes.toMutableList()
                     for (key in newEpisodeKeys) {
-                        if (!currentList.contains(key)) {
-                            currentList.add(key)
-                            changed = true
+                        if (!currentMediaList.contains(key)) {
+                            currentMediaList.add(key)
                         }
                     }
-                    if (changed) {
-                        batch.update(mediaRef, "watchedEpisodes", currentList)
-                    }
                 }
-            } else {
-                val newItem = FirestoreMediaItem(
-                    id = showId.toIntOrNull() ?: 0,
-                    title = showTitle,
-                    posterPath = posterPath,
-                    mediaType = "tv",
-                    watched = false,
-                    watchedEpisodes = newEpisodeKeys,
-                    addedAt = System.currentTimeMillis()
-                )
-                batch.set(mediaRef, newItem)
             }
             
-            batch.commit().await()
+            // Chunk episodes into batches of 400
+            val chunkedEpisodes = episodes.chunked(400)
+            
+            for ((index, chunk) in chunkedEpisodes.withIndex()) {
+                val batch = db.batch()
+                
+                for ((seasonNumber, episodeNumber) in chunk) {
+                    val docId = "${showId}_S${seasonNumber}E${episodeNumber}"
+                    val docRef = db.collection("users").document(uid).collection("watched_episodes").document(docId)
+                    batch.set(docRef, WatchedEpisode(showId, seasonNumber, episodeNumber, System.currentTimeMillis()))
+                }
+                
+                // Update media item in the last batch
+                if (index == chunkedEpisodes.size - 1) {
+                    if (snapshot.exists()) {
+                        batch.update(mediaRef, "watchedEpisodes", currentMediaList)
+                    } else {
+                        val newItem = FirestoreMediaItem(
+                            id = showId.toIntOrNull() ?: 0,
+                            title = showTitle,
+                            posterPath = posterPath,
+                            mediaType = "tv",
+                            watched = false,
+                            watchedEpisodes = newEpisodeKeys,
+                            addedAt = System.currentTimeMillis()
+                        )
+                        batch.set(mediaRef, newItem)
+                    }
+                }
+                
+                batch.commit().await()
+            }
         } catch (e: Exception) {
             e.printStackTrace()
         }
-    }
+}
 }

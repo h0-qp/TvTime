@@ -39,6 +39,7 @@ import androidx.compose.material.icons.filled.KeyboardArrowLeft
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -73,6 +74,7 @@ fun DetailsScreen(
     val uiState by viewModel.uiState.collectAsState()
     var selectedTab by rememberSaveable { mutableIntStateOf(0) }
     val detailsScrollState = rememberScrollState()
+    val seasonsListState = rememberLazyListState()
     var showBottomSheet by remember { mutableStateOf(false) }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var showAddSuccess by remember { mutableStateOf(false) }
@@ -351,6 +353,7 @@ fun DetailsScreen(
                                 // Episodes Tab
                                 if (mediaType == "tv" && !item.seasons.isNullOrEmpty()) {
                                     LazyRow(
+                                        state = seasonsListState,
                                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                                     ) {
                                         items(item.seasons) { season ->
