@@ -46,17 +46,36 @@ import com.example.ui.theme.TextSecondary
 import com.example.ui.theme.TrueBlack
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 
+fun Int.toArabicDigits(): String {
+    return this.toString().map { char ->
+        if (char in '0'..'9') {
+            (char - '0' + 0x0660).toChar()
+        } else {
+            char
+        }
+    }.joinToString("")
+}
+
 @OptIn(ExperimentalPermissionsApi::class)
 @Composable
 fun ProfileScreen(
     authRepository: AuthRepository,
     firestoreRepository: FirestoreRepository,
+    mediaRepository: com.example.data.repository.MediaRepository,
     onSignOut: () -> Unit,
     onNavigateToDetails: (String, Int) -> Unit,
     onNavigateToAllTvShows: () -> Unit,
     onNavigateToAllMovies: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val viewModel: ProfileViewModel = androidx.lifecycle.viewmodel.compose.viewModel(
+        factory = ProfileViewModelFactory(firestoreRepository, mediaRepository)
+    )
+    val totalEpisodesWatched by viewModel.totalEpisodesWatched.collectAsState()
+    val tvTimeMinutes by viewModel.tvTimeMinutes.collectAsState()
+    val tvShowsCount by viewModel.tvShowsCount.collectAsState()
+    val moviesCount by viewModel.moviesCount.collectAsState()
+
     val currentUser = authRepository.currentUser
     val email = currentUser?.email ?: "guest@trackverse.com"
     val context = LocalContext.current
@@ -199,9 +218,9 @@ fun ProfileScreen(
                 horizontalArrangement = Arrangement.SpaceEvenly,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                ProfileStatColumn("متابعًا", "١")
+                ProfileStatColumn("متابعًا", "٠")
                 VerticalDivider(modifier = Modifier.height(50.dp), color = DarkGrey)
-                ProfileStatColumn("متابِعين", "٢")
+                ProfileStatColumn("متابِعين", "٠")
                 VerticalDivider(modifier = Modifier.height(50.dp), color = DarkGrey)
                 ProfileStatColumn("تعليقات", "٠")
             }
@@ -234,9 +253,13 @@ fun ProfileScreen(
                             horizontalArrangement = Arrangement.SpaceEvenly,
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            TimeStat("الشهور", "٤")
-                            TimeStat("أيام", "٨")
-                            TimeStat("الساعات", "٢")
+                            val months = tvTimeMinutes / (60 * 24 * 30)
+                            val days = (tvTimeMinutes % (60 * 24 * 30)) / (60 * 24)
+                            val hours = (tvTimeMinutes % (60 * 24)) / 60
+                            
+                            TimeStat("الشهور", months.toArabicDigits())
+                            TimeStat("أيام", days.toArabicDigits())
+                            TimeStat("الساعات", hours.toArabicDigits())
                         }
                     }
                 }
@@ -256,7 +279,7 @@ fun ProfileScreen(
                         }
                         Spacer(modifier = Modifier.height(24.dp))
                         Text(
-                            text = "٦,٦٧٧",
+                            text = java.text.NumberFormat.getNumberInstance(java.util.Locale.US).format(totalEpisodesWatched).map { char -> if (char in '0'..'9') (char - '0' + 0x0660).toChar() else char }.joinToString(""),
                             color = Color.White,
                             fontSize = 20.sp,
                             fontWeight = FontWeight.Bold

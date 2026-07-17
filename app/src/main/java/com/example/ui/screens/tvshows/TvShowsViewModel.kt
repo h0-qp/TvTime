@@ -81,6 +81,9 @@ class TvShowsViewModel(
     private val _uiState = MutableStateFlow<TvShowsUiState>(TvShowsUiState.Loading)
     val uiState: StateFlow<TvShowsUiState> = _uiState
 
+    private val detailsCache = mutableMapOf<String, com.example.data.remote.MediaItem>()
+    private val seasonCache = mutableMapOf<String, List<com.example.data.remote.Episode>>()
+
     init {
         fetchData()
     }
@@ -198,22 +201,68 @@ class TvShowsViewModel(
             ) { watchlist, watchedEps, allMedia ->
                 Triple(watchlist, watchedEps, allMedia)
             }.collectLatest { (watchlist, watchedEps, allMedia) ->
-                val showDetailsMap = mutableMapOf<String, MediaItem>()
-                val seasonDetailsMap = mutableMapOf<String, List<Episode>>() 
+                val lastWatchedMap = mutableMapOf<String, com.example.data.firebase.WatchedEpisode>() 
 
                 val tvMedia = allMedia.filter { it.mediaType == "tv" }
                 val activeWatchlist = tvMedia.map { WatchlistShow(it.id.toString(), it.addedAt) }
 
                 // 1. Fetch details for watchlist (Watch Next, History)
-                val deferredDetails = activeWatchlist.map { show ->
+                val deferredDetails = activeWatchlist.filter { !detailsCache.containsKey(it.showId) }.map { show ->
                     async {
                         val result = repository.getMediaDetails(apiKey, show.showId.toIntOrNull() ?: 0, "tv")
-                        result.getOrNull()?.let { details ->
-                            showDetailsMap[show.showId] = details
-                        }
+                        Pair(show.showId, result.getOrNull())
                     }
                 }
-                deferredDetails.awaitAll()
+                val results = deferredDetails.awaitAll()
+                for ((showId, details) in results) {
+                    if (details != null) {
+                        detailsCache[showId] = details
+                    }
+                    val lastWatchedEp = watchedEps.filter { it.showId == showId }.maxByOrNull { it.watchedAt }
+                    if (lastWatchedEp != null) {
+                        lastWatchedMap[showId] = lastWatchedEp
+                    }
+                }
+
+                // 1.5 Fetch necessary season details concurrently
+                val deferredSeasons = activeWatchlist.mapNotNull { show ->
+                    val details = detailsCache[show.showId] ?: return@mapNotNull null
+                    val showMediaItem = tvMedia.find { it.id.toString() == show.showId }
+                    val allWatchedEpKeys = showMediaItem?.watchedEpisodes ?: emptyList()
+                    val totalEpisodes = details.number_of_episodes ?: 0
+                    
+                    if (allWatchedEpKeys.isEmpty() || (allWatchedEpKeys.size >= totalEpisodes && totalEpisodes > 0)) {
+                        return@mapNotNull null // Not started or completed
+                    }
+                    
+                    val candidateSeasons = details.seasons?.filter { it.season_number > 0 }?.sortedBy { it.season_number } ?: emptyList()
+                    val firstUnwatchedSeason = candidateSeasons.firstOrNull { season ->
+                        val watchedInSeasonCount = allWatchedEpKeys.count { it.startsWith("S${season.season_number}E") }
+                        watchedInSeasonCount < season.episode_count
+                    }
+                    
+                    if (firstUnwatchedSeason != null) {
+                        val cacheKey = "${show.showId}_${firstUnwatchedSeason.season_number}"
+                        if (seasonCache.containsKey(cacheKey)) {
+                            null
+                        } else {
+                            async {
+                                val seasonResult = repository.getSeasonDetails(apiKey, show.showId.toIntOrNull() ?: 0, firstUnwatchedSeason.season_number)
+                                val seasonInfo = seasonResult.getOrNull()
+                                Pair(cacheKey, seasonInfo?.episodes)
+                            }
+                        }
+                    } else {
+                        null
+                    }
+                }
+                
+                val seasonResults = deferredSeasons.awaitAll()
+                for ((cacheKey, episodes) in seasonResults) {
+                    if (episodes != null) {
+                        seasonCache[cacheKey] = episodes
+                    }
+                }
 
                 val watchedHistory = mutableListOf<WatchedEpisodeData>()
                 val watchNext = mutableListOf<NextEpisodeData>()
@@ -221,7 +270,7 @@ class TvShowsViewModel(
                 val notStarted = mutableListOf<NotStartedShowData>()
 
                 for (show in activeWatchlist) {
-                    val details = showDetailsMap[show.showId] ?: continue
+                    val details = detailsCache[show.showId] ?: continue
                     val showWatchedEps = watchedEps.filter { it.showId == show.showId }.sortedWith(compareBy({ it.seasonNumber }, { it.episodeNumber }))
                     
                     val showMediaItem = tvMedia.find { it.id.toString() == show.showId }
@@ -270,15 +319,15 @@ class TvShowsViewModel(
                             }
 
                             val cacheKey = "${show.showId}_${season.season_number}"
-                            if (!seasonDetailsMap.containsKey(cacheKey)) {
+                            if (!seasonCache.containsKey(cacheKey)) {
                                 val seasonResult = repository.getSeasonDetails(apiKey, show.showId.toIntOrNull() ?: 0, season.season_number)
                                 val seasonInfo = seasonResult.getOrNull()
                                 if (seasonInfo != null) {
-                                    seasonDetailsMap[cacheKey] = seasonInfo.episodes
+                                    seasonCache[cacheKey] = seasonInfo.episodes
                                 }
                             }
 
-                            val seasonEpisodes = seasonDetailsMap[cacheKey] ?: emptyList()
+                            val seasonEpisodes = seasonCache[cacheKey] ?: emptyList()
                             val candidate = seasonEpisodes.filter { ep ->
                                 val epKey = "S${season.season_number}E${ep.episode_number}"
                                 val isEpWatched = allWatchedEpKeys.contains(epKey)
@@ -298,9 +347,9 @@ class TvShowsViewModel(
                     }
 
                     if (nextEpisodeFound != null) {
-                        val lastWatchedEpFromRecent = showWatchedEps.lastOrNull()
-                        val isRecent = if (lastWatchedEpFromRecent != null) {
-                            (System.currentTimeMillis() - lastWatchedEpFromRecent.watchedAt) < 30L * 24 * 60 * 60 * 1000
+                        val lastWatchedEp = lastWatchedMap[show.showId]
+                        val isRecent = if (lastWatchedEp != null) {
+                            (System.currentTimeMillis() - lastWatchedEp.watchedAt) <= 30L * 24 * 60 * 60 * 1000
                         } else {
                             false
                         }
@@ -321,7 +370,13 @@ class TvShowsViewModel(
                 val deferredUpcoming = tvMedia.map { media ->
                     async {
                         var epData: UpcomingEpisodeData? = null
-                        val details = showDetailsMap[media.id.toString()] ?: repository.getMediaDetails(apiKey, media.id, "tv").getOrNull()
+                        var details = detailsCache[media.id.toString()]
+                        if (details == null) {
+                            details = repository.getMediaDetails(apiKey, media.id, "tv").getOrNull()
+                            if (details != null) {
+                                detailsCache[media.id.toString()] = details
+                            }
+                        }
                         if (details != null) {
                             val nextEpisode = details.next_episode_to_air
                             val lastEpisode = details.last_episode_to_air

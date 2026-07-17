@@ -206,6 +206,7 @@ fun TrackVerseApp(appContainer: com.example.data.AppContainer) {
                 com.example.ui.screens.profile.ProfileScreen(
                     authRepository = appContainer.authRepository,
                     firestoreRepository = appContainer.firestoreRepository,
+                    mediaRepository = appContainer.mediaRepository,
                     onNavigateToDetails = { mediaType, mediaId -> navController.navigate("details/$mediaType/$mediaId") },
                     onNavigateToAllTvShows = { navController.navigate("all_tv_shows") },
                     onNavigateToAllMovies = { navController.navigate("all_movies") },

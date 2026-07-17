@@ -130,6 +130,21 @@ class FirestoreRepository {
         awaitClose { listener.remove() }
     }
 
+    suspend fun getLastWatchedEpisodeForShow(showId: String): WatchedEpisode? {
+        val uid = currentUserId ?: return null
+        return try {
+            val snapshot = db.collection("users").document(uid)
+                .collection("watched_episodes")
+                .whereEqualTo("showId", showId)
+                .get()
+                .await()
+            snapshot.documents.mapNotNull { it.toObject(WatchedEpisode::class.java) }
+                .maxByOrNull { it.watchedAt }
+        } catch (e: Exception) {
+            null
+        }
+    }
+
     suspend fun addTvShowToWatchlist(showId: String) {
         val uid = currentUserId ?: return
         db.collection("users").document(uid).collection("watchlist_shows").document(showId)
