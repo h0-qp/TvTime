@@ -218,9 +218,12 @@ class TvShowsViewModel(
                     if (details != null) {
                         detailsCache[showId] = details
                     }
-                    val lastWatchedEp = watchedEps.filter { it.showId == showId }.maxByOrNull { it.watchedAt }
+                }
+
+                for (show in activeWatchlist) {
+                    val lastWatchedEp = watchedEps.filter { it.showId == show.showId }.maxByOrNull { it.watchedAt }
                     if (lastWatchedEp != null) {
-                        lastWatchedMap[showId] = lastWatchedEp
+                        lastWatchedMap[show.showId] = lastWatchedEp
                     }
                 }
 
@@ -369,7 +372,7 @@ class TvShowsViewModel(
                 // 2. Fetch upcoming episodes for "المرتقبة" tab
                 val deferredUpcoming = tvMedia.map { media ->
                     async {
-                        var epData: UpcomingEpisodeData? = null
+                        val epDataList = mutableListOf<UpcomingEpisodeData>()
                         var details = detailsCache[media.id.toString()]
                         if (details == null) {
                             details = repository.getMediaDetails(apiKey, media.id, "tv").getOrNull()
@@ -381,27 +384,55 @@ class TvShowsViewModel(
                             val nextEpisode = details.next_episode_to_air
                             val lastEpisode = details.last_episode_to_air
                                                         
-                            if (nextEpisode != null) {
-                                val airDate = try { LocalDate.parse(nextEpisode.air_date) } catch (e: Exception) { null }
-                                if (airDate != null) {
-                                    val diff = ChronoUnit.DAYS.between(today, airDate)
-                                    epData = UpcomingEpisodeData(media, details, nextEpisode, diff)
-                                }
-                            } else if (lastEpisode != null) {
-                                val airDate = try { LocalDate.parse(lastEpisode.air_date) } catch (e: Exception) { null }
-                                if (airDate != null) {
-                                    val diff = ChronoUnit.DAYS.between(today, airDate)
-                                    if (diff >= -30) {
-                                        epData = UpcomingEpisodeData(media, details, lastEpisode, diff)
+                            val targetSeason = nextEpisode?.season_number ?: lastEpisode?.season_number
+                            
+                            if (targetSeason != null) {
+                                val seasonDetails = repository.getSeasonDetails(apiKey, media.id, targetSeason).getOrNull()
+                                if (seasonDetails != null) {
+                                    seasonDetails.episodes.forEach { episode ->
+                                        if (episode.air_date != null && episode.air_date.isNotEmpty()) {
+                                            val airDate = try { LocalDate.parse(episode.air_date) } catch (e: Exception) { null }
+                                            if (airDate != null) {
+                                                val diff = ChronoUnit.DAYS.between(today, airDate)
+                                                if (diff >= -30) {
+                                                    val episodeToAir = EpisodeToAir(
+                                                        id = episode.id,
+                                                        name = episode.name,
+                                                        overview = episode.overview,
+                                                        air_date = episode.air_date ?: "",
+                                                        episode_number = episode.episode_number,
+                                                        season_number = episode.season_number,
+                                                        still_path = episode.still_path
+                                                    )
+                                                    epDataList.add(UpcomingEpisodeData(media, details, episodeToAir, diff))
+                                                }
+                                            }
+                                        }
+                                    }
+                                } else {
+                                    if (nextEpisode != null) {
+                                        val airDate = try { LocalDate.parse(nextEpisode.air_date) } catch (e: Exception) { null }
+                                        if (airDate != null) {
+                                            val diff = ChronoUnit.DAYS.between(today, airDate)
+                                            epDataList.add(UpcomingEpisodeData(media, details, nextEpisode, diff))
+                                        }
+                                    } else if (lastEpisode != null) {
+                                        val airDate = try { LocalDate.parse(lastEpisode.air_date) } catch (e: Exception) { null }
+                                        if (airDate != null) {
+                                            val diff = ChronoUnit.DAYS.between(today, airDate)
+                                            if (diff >= -30) {
+                                                epDataList.add(UpcomingEpisodeData(media, details, lastEpisode, diff))
+                                            }
+                                        }
                                     }
                                 }
                             }
                         }
-                        epData
+                        epDataList
                     }
                 }
                 
-                val upcomingEpisodes = deferredUpcoming.awaitAll().filterNotNull().sortedBy { it.daysDifference }
+                val upcomingEpisodes = deferredUpcoming.awaitAll().flatten().sortedBy { it.daysDifference }
 
                 // Sort history ascending
                 watchedHistory.sortWith(compareBy<WatchedEpisodeData> { it.watchedAt }

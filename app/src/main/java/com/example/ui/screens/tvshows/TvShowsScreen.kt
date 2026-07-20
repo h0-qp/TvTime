@@ -44,20 +44,33 @@ fun TvShowsScreen(
     var selectedTab by rememberSaveable { mutableStateOf(1) } // 0 = Upcoming, 1 = Watchlist
     val watchlistListState = rememberLazyListState()
     val upcomingListState = rememberLazyListState()
-    var hasAutoScrolled by rememberSaveable { mutableStateOf(false) }
+    var hasWatchlistAutoScrolled by rememberSaveable { mutableStateOf(false) }
+    var hasUpcomingAutoScrolled by rememberSaveable { mutableStateOf(false) }
 
     LaunchedEffect(uiState, selectedTab) {
-        if (selectedTab == 1 && uiState is TvShowsUiState.Success) {
+        if (uiState is TvShowsUiState.Success) {
             val success = uiState as TvShowsUiState.Success
-            if (success.watchedHistory.isNotEmpty() && !hasAutoScrolled) {
-                val targetIndex = 1 + success.watchedHistory.size
-                watchlistListState.scrollToItem(targetIndex)
-                hasAutoScrolled = true
-            } else if (success.watchedHistory.isEmpty()) {
-                hasAutoScrolled = true
+            if (selectedTab == 1) {
+                if (success.watchedHistory.isNotEmpty() && !hasWatchlistAutoScrolled) {
+                    val targetIndex = 1 + success.watchedHistory.size
+                    watchlistListState.scrollToItem(targetIndex)
+                    hasWatchlistAutoScrolled = true
+                } else if (success.watchedHistory.isEmpty()) {
+                    hasWatchlistAutoScrolled = true
+                }
+            } else if (selectedTab == 0) {
+                if (!hasUpcomingAutoScrolled) {
+                    val pastEpisodes = success.upcomingEpisodes.filter { it.daysDifference < 0L }
+                    if (pastEpisodes.isNotEmpty()) {
+                        val pastGroups = pastEpisodes
+                            .groupBy { try { LocalDate.parse(it.episodeToAir.air_date) } catch (e: Exception) { null } }
+                            .filterKeys { it != null }
+                        val targetIndex = pastGroups.size + pastEpisodes.size
+                        upcomingListState.scrollToItem(targetIndex)
+                    }
+                    hasUpcomingAutoScrolled = true
+                }
             }
-        } else if (selectedTab != 1) {
-            hasAutoScrolled = false
         }
     }
 

@@ -134,6 +134,15 @@ class MediaRepository(
         }
     }
 
+    suspend fun getCollectionDetails(apiKey: String, collectionId: Int): Result<com.example.data.remote.CollectionDetailsResponse> {
+        return try {
+            val response = tmdbApi.getCollectionDetails(collectionId, apiKey, "ar")
+            Result.success(response)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     suspend fun getMediaDetails(apiKey: String, id: Int, mediaType: String): Result<com.example.data.remote.MediaItem> {
         return try {
             val response = if (mediaType == "tv") {

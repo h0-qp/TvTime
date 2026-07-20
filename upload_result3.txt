@@ -1,0 +1,1 @@
+{"status":"success","data":{"url":"https://tmpfiles.org/wBwCugubpM0u/app-release.apk"}}

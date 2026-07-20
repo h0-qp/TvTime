@@ -22,7 +22,8 @@ sealed class DetailsUiState {
         val selectedSeasonDetails: com.example.data.remote.SeasonDetails? = null,
         val selectedSeasonNumber: Int? = null,
         val isLoadingSeason: Boolean = false,
-        val selectedEpisodeDetails: com.example.data.remote.Episode? = null
+        val selectedEpisodeDetails: com.example.data.remote.Episode? = null,
+        val collectionDetails: com.example.data.remote.CollectionDetailsResponse? = null
     ) : DetailsUiState()
     data class Error(val message: String) : DetailsUiState()
 }
@@ -68,6 +69,12 @@ class DetailsViewModel(
                         // We will fetch season details separately
                         fetchSeasonDetails(seasonNumber, apiKey)
                     }
+                    
+                    var collectionDetails: com.example.data.remote.CollectionDetailsResponse? = null
+                    if (response.belongs_to_collection != null) {
+                        val collectionResult = repository.getCollectionDetails(apiKey, response.belongs_to_collection.id)
+                        collectionDetails = collectionResult.getOrNull()
+                    }
 
                     _uiState.value = DetailsUiState.Success(
                         mediaItem = response,
@@ -75,7 +82,8 @@ class DetailsViewModel(
                         firestoreItem = firestoreItem,
                         selectedSeasonDetails = seasonDetails,
                         selectedSeasonNumber = seasonNumber,
-                        selectedEpisodeDetails = if (currentState is DetailsUiState.Success) currentState.selectedEpisodeDetails else null
+                        selectedEpisodeDetails = if (currentState is DetailsUiState.Success) currentState.selectedEpisodeDetails else null,
+                        collectionDetails = collectionDetails
                     )
                 }.onFailure { exception ->
                     _uiState.value = DetailsUiState.Error(exception.message ?: "Unknown error occurred")

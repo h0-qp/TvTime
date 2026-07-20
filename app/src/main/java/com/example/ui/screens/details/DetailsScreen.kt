@@ -346,7 +346,7 @@ fun DetailsScreen(
                             
                             if (selectedTab == 0) {
                                 // About Tab
-                                AboutTabContent(item = item, onNavigateToDetails = onNavigateToDetails)
+                                AboutTabContent(item = item, collectionDetails = state.collectionDetails, onNavigateToDetails = onNavigateToDetails)
                             } else if (selectedTab == 1 && mediaType != "tv") {
                                 // More Tab (Movies)
                                 MoreTabContent(item = item)
@@ -675,7 +675,7 @@ fun DetailsScreen(
 }
 
 @Composable
-fun AboutTabContent(item: MediaItem, onNavigateToDetails: (String, Int) -> Unit) {
+fun AboutTabContent(item: MediaItem, collectionDetails: com.example.data.remote.CollectionDetailsResponse?, onNavigateToDetails: (String, Int) -> Unit) {
     Column(modifier = Modifier.fillMaxWidth()) {
         // "أين تُشاهد" section
         Row(
@@ -821,6 +821,22 @@ fun AboutTabContent(item: MediaItem, onNavigateToDetails: (String, Int) -> Unit)
                         Text(text = cast.name, color = TextPrimary, fontSize = 12.sp, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
                         Text(text = cast.character, color = TextSecondary, fontSize = 10.sp, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
                     }
+                }
+            }
+            Spacer(modifier = Modifier.height(32.dp))
+        }
+
+        if (collectionDetails?.parts?.isNotEmpty() == true) {
+            Text(text = "أجزاء من نفس السلسلة", color = TextPrimary, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+            Spacer(modifier = Modifier.height(16.dp))
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                items(collectionDetails.parts.sortedBy { it.release_date }) { part ->
+                    AsyncImage(
+                        model = "https://image.tmdb.org/t/p/w342${part.poster_path}",
+                        contentDescription = part.title ?: part.name,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.width(120.dp).height(180.dp).clip(RoundedCornerShape(8.dp)).background(DarkGrey).clickable { onNavigateToDetails(part.media_type ?: item.media_type ?: "movie", part.id) }
+                    )
                 }
             }
             Spacer(modifier = Modifier.height(32.dp))

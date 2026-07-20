@@ -6,6 +6,13 @@ import retrofit2.http.Path
 import com.squareup.moshi.Json
 
 interface TmdbApi {
+    @GET("collection/{collection_id}")
+    suspend fun getCollectionDetails(
+        @Path("collection_id") collectionId: Int,
+        @Query("api_key") apiKey: String,
+        @Query("language") language: String = "en-US"
+    ): CollectionDetailsResponse
+
     @GET("trending/tv/day")
     suspend fun getTrendingTvShows(
         @Query("api_key") apiKey: String,
@@ -136,9 +143,25 @@ data class MediaItem(
     val genres: List<Genre>? = null,
     val vote_average: Double? = null,
     val runtime: Int? = null,
-    val episode_run_time: List<Int>? = null
-,
+    val episode_run_time: List<Int>? = null,
+    val belongs_to_collection: CollectionReference? = null,
     @Json(name = "watch/providers") val watch_providers: WatchProvidersResponse? = null)
+
+data class CollectionReference(
+    val id: Int,
+    val name: String,
+    val poster_path: String?,
+    val backdrop_path: String?
+)
+
+data class CollectionDetailsResponse(
+    val id: Int,
+    val name: String,
+    val overview: String,
+    val poster_path: String?,
+    val backdrop_path: String?,
+    val parts: List<MediaItem>
+)
 
 data class EpisodeToAir(
     val id: Int,
