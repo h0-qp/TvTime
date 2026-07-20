@@ -851,7 +851,7 @@ fun AboutTabContent(item: MediaItem, collectionDetails: com.example.data.remote.
                         model = "https://image.tmdb.org/t/p/w342${similarItem.poster_path}",
                         contentDescription = similarItem.title ?: similarItem.name,
                         contentScale = ContentScale.Crop,
-                        modifier = Modifier.width(120.dp).height(180.dp).clip(RoundedCornerShape(8.dp)).background(DarkGrey).clickable { onNavigateToDetails(similarItem.media_type ?: item.media_type ?: "tv", similarItem.id) }
+                        modifier = Modifier.width(120.dp).height(180.dp).clip(RoundedCornerShape(8.dp)).background(DarkGrey).clickable { onNavigateToDetails(similarItem.media_type ?: item.media_type ?: if (item.title != null) "movie" else "tv", similarItem.id) }
                     )
                 }
             }

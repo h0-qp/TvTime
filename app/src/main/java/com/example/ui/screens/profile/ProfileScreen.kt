@@ -81,6 +81,20 @@ fun ProfileScreen(
     val context = LocalContext.current
     val username = email.substringBefore("@")
     
+    val permissionLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.RequestPermission()
+    ) { isGranted: Boolean ->
+        if (isGranted) {
+            com.example.util.NotificationHelper.showNotification(
+                context,
+                "إشعار تجريبي",
+                "الإشعارات تعمل بنجاح!"
+            )
+        } else {
+            Toast.makeText(context, "يجب السماح بالإشعارات", Toast.LENGTH_SHORT).show()
+        }
+    }
+    
     val userMedia by firestoreRepository.observeUserMedia().collectAsState(initial = emptyList())
     val tvShows = userMedia.filter { it.mediaType == "tv" }
     val movies = userMedia.filter { it.mediaType == "movie" }
@@ -349,6 +363,29 @@ fun ProfileScreen(
         item {
             SectionHeader(title = "الأفلام المفضلة", isFavorite = true)
             AddButtonBox(text = "إضافة الأفلام المفضلة")
+            Spacer(modifier = Modifier.height(32.dp))
+            
+            Button(
+                onClick = { 
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                        permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                    } else {
+                        com.example.util.NotificationHelper.showNotification(
+                            context,
+                            "إشعار تجريبي",
+                            "الإشعارات تعمل بنجاح!"
+                        )
+                    }
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = DarkGrey)
+            ) {
+                Icon(Icons.Default.Notifications, contentDescription = "Test Notifications", tint = GoldYellow)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("تجربة الإشعارات", color = Color.White)
+            }
             Spacer(modifier = Modifier.height(32.dp))
         }
     }
