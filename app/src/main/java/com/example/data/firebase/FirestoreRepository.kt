@@ -36,6 +36,34 @@ class FirestoreRepository {
 
     private val currentUserId: String?
         get() = auth.currentUser?.uid
+        
+    fun observeUserProfile(): Flow<UserProfile?> = callbackFlow {
+        val uid = currentUserId
+        if (uid == null) {
+            trySend(null)
+            close()
+            return@callbackFlow
+        }
+        val listener = db.collection("users").document(uid)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    trySend(null)
+                    return@addSnapshotListener
+                }
+                if (snapshot != null && snapshot.exists()) {
+                    val profile = snapshot.toObject(UserProfile::class.java)
+                    trySend(profile)
+                } else {
+                    trySend(null)
+                }
+            }
+        awaitClose { listener.remove() }
+    }
+
+    suspend fun updateUserProfile(profile: UserProfile) {
+        val uid = currentUserId ?: return
+        db.collection("users").document(uid).set(profile, com.google.firebase.firestore.SetOptions.merge()).await()
+    }
 
     // Add or Update Media
     suspend fun addOrUpdateMedia(item: FirestoreMediaItem): Result<Unit> {

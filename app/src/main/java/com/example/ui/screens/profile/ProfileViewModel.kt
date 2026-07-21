@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.example.data.firebase.FirestoreRepository
+import com.example.data.firebase.UserProfile
 import com.example.data.repository.MediaRepository
 import com.example.BuildConfig
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -30,8 +31,17 @@ class ProfileViewModel(
 
     private val _moviesCount = MutableStateFlow(0)
     val moviesCount: StateFlow<Int> = _moviesCount.asStateFlow()
+    
+    private val _userProfile = MutableStateFlow<UserProfile?>(null)
+    val userProfile: StateFlow<UserProfile?> = _userProfile.asStateFlow()
 
     init {
+        viewModelScope.launch {
+            firestoreRepository.observeUserProfile().collectLatest { profile ->
+                _userProfile.value = profile
+            }
+        }
+        
         viewModelScope.launch {
             firestoreRepository.observeUserMedia().collectLatest { mediaList ->
                 val tvMedia = mediaList.filter { it.mediaType == "tv" }
@@ -65,6 +75,14 @@ class ProfileViewModel(
                 totalMins = deferredRuntimes.awaitAll().sum()
                 _tvTimeMinutes.value = totalMins
             }
+        }
+    }
+    
+    fun updateUserProfile(profile: UserProfile, onComplete: () -> Unit) {
+        viewModelScope.launch {
+            firestoreRepository.updateUserProfile(profile)
+            _userProfile.value = profile // update state immediately
+            onComplete()
         }
     }
 }

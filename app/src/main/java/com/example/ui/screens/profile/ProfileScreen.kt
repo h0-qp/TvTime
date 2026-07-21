@@ -15,6 +15,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.CameraAlt
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.material.icons.filled.Notifications
@@ -24,6 +26,10 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.platform.LocalContext
 import android.widget.Toast
 import androidx.compose.ui.Alignment
@@ -39,6 +45,8 @@ import coil.compose.AsyncImage
 import com.example.data.firebase.AuthRepository
 import com.example.data.firebase.FirestoreRepository
 import com.example.data.firebase.FirestoreMediaItem
+import com.example.data.firebase.UserProfile
+import kotlinx.coroutines.launch
 import com.example.ui.theme.DarkGrey
 import com.example.ui.theme.GoldYellow
 import com.example.ui.theme.TextPrimary
@@ -56,7 +64,7 @@ fun Int.toArabicDigits(): String {
     }.joinToString("")
 }
 
-@OptIn(ExperimentalPermissionsApi::class)
+@OptIn(ExperimentalPermissionsApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun ProfileScreen(
     authRepository: AuthRepository,
@@ -75,12 +83,19 @@ fun ProfileScreen(
     val tvTimeMinutes by viewModel.tvTimeMinutes.collectAsState()
     val tvShowsCount by viewModel.tvShowsCount.collectAsState()
     val moviesCount by viewModel.moviesCount.collectAsState()
+    val userProfile by viewModel.userProfile.collectAsState()
 
     val currentUser = authRepository.currentUser
     val email = currentUser?.email ?: "guest@trackverse.com"
     val context = LocalContext.current
-    val username = email.substringBefore("@")
     
+    val displayUsername = userProfile?.username?.takeIf { it.isNotBlank() } ?: email.substringBefore("@")
+    val displayName = userProfile?.displayName?.takeIf { it.isNotBlank() } ?: displayUsername
+    val profilePicture = userProfile?.profilePictureUrl
+    val bio = userProfile?.bio ?: ""
+    
+    var showEditSheet by remember { mutableStateOf(false) }
+
     val permissionLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
         androidx.activity.result.contract.ActivityResultContracts.RequestPermission()
     ) { isGranted: Boolean ->
@@ -186,12 +201,21 @@ fun ProfileScreen(
                             .border(2.dp, TrueBlack, CircleShape),
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.Person,
-                            contentDescription = "Avatar",
-                            tint = Color.LightGray,
-                            modifier = Modifier.size(60.dp)
-                        )
+                        if (!profilePicture.isNullOrEmpty()) {
+                            AsyncImage(
+                                model = profilePicture,
+                                contentDescription = "Avatar",
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        } else {
+                            Icon(
+                                imageVector = Icons.Default.Person,
+                                contentDescription = "Avatar",
+                                tint = Color.LightGray,
+                                modifier = Modifier.size(60.dp)
+                            )
+                        }
                     }
 
                     Spacer(modifier = Modifier.width(16.dp))
@@ -199,17 +223,24 @@ fun ProfileScreen(
                     // Username & Edit (Left of Avatar)
                     Column(horizontalAlignment = Alignment.Start) {
                         Text(
-                            text = username,
+                            text = displayName,
                             color = Color.White,
                             fontSize = 24.sp,
                             fontWeight = FontWeight.Bold
                         )
+                        if (displayUsername != displayName) {
+                            Text(
+                                text = "@$displayUsername",
+                                color = TextSecondary,
+                                fontSize = 14.sp
+                            )
+                        }
                         Spacer(modifier = Modifier.height(4.dp))
                         Box(
                             modifier = Modifier
                                 .border(1.dp, Color.White, RoundedCornerShape(16.dp))
                                 .padding(horizontal = 16.dp, vertical = 4.dp)
-                                .clickable { Toast.makeText(context, "هذه الميزة ستتوفر قريباً", Toast.LENGTH_SHORT).show() }
+                                .clickable { showEditSheet = true }
                         ) {
                             Text(
                                 text = "تعديل",
@@ -219,6 +250,17 @@ fun ProfileScreen(
                         }
                     }
                 }
+            }
+        }
+
+        if (bio.isNotBlank()) {
+            item {
+                Text(
+                    text = bio,
+                    color = Color.White,
+                    fontSize = 14.sp,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                )
             }
         }
 
@@ -387,6 +429,171 @@ fun ProfileScreen(
                 Text("تجربة الإشعارات", color = Color.White)
             }
             Spacer(modifier = Modifier.height(32.dp))
+        }
+    }
+
+    if (showEditSheet) {
+        val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+        val scope = rememberCoroutineScope()
+        var editDisplayName by remember { mutableStateOf(displayName) }
+        var editUsername by remember { mutableStateOf(displayUsername) }
+        var editBio by remember { mutableStateOf(bio) }
+        var editProfilePicture by remember { mutableStateOf(profilePicture ?: "") }
+        var isSaving by remember { mutableStateOf(false) }
+
+        ModalBottomSheet(
+            onDismissRequest = { showEditSheet = false },
+            sheetState = sheetState,
+            containerColor = Color(0xFF121212),
+            shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                // Header
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(text = "تعديل الملف الشخصي", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                    IconButton(onClick = { 
+                        scope.launch { sheetState.hide() }.invokeOnCompletion {
+                            if (!sheetState.isVisible) showEditSheet = false
+                        }
+                    }) {
+                        Icon(Icons.Default.Close, contentDescription = "Close", tint = Color.White)
+                    }
+                }
+                
+                Spacer(modifier = Modifier.height(24.dp))
+                
+                // Profile Picture Editor
+                Box(
+                    modifier = Modifier
+                        .size(100.dp)
+                        .clip(CircleShape)
+                        .background(DarkGrey)
+                        .border(2.dp, GoldYellow, CircleShape)
+                        .clickable {
+                            // Quick toggle for cinematic avatars
+                            val avatars = listOf(
+                                "https://image.tmdb.org/t/p/w200/9U9Y5GQuWX3EZy39B8nkk4NY01S.jpg", // Walter White
+                                "https://image.tmdb.org/t/p/w200/lOrnB1iID2O7mJmS1bN8m6c1b3Z.jpg", // Jon Snow
+                                "https://image.tmdb.org/t/p/w200/1XjdO9Jq9uS8r33w664XqX9P9y9.jpg", // Eleven
+                                "https://image.tmdb.org/t/p/w200/5v5wK85D2b4q5E2m3XbK658Fq67.jpg", // Geralt
+                                "https://image.tmdb.org/t/p/w200/8qBylBsQf4llkGrZA3Ww8aL9k4D.jpg", // Mandalorian
+                                "https://image.tmdb.org/t/p/w200/3oWEuo0eHWFCE5N56P3W0c17GvU.jpg" // John Wick
+                            )
+                            val currentIndex = avatars.indexOf(editProfilePicture)
+                            editProfilePicture = avatars[(currentIndex + 1) % avatars.size]
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (editProfilePicture.isNotBlank()) {
+                        AsyncImage(
+                            model = editProfilePicture,
+                            contentDescription = "Avatar",
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    } else {
+                        Icon(Icons.Default.Person, contentDescription = "Avatar", tint = Color.LightGray, modifier = Modifier.size(60.dp))
+                    }
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd)
+                            .clip(CircleShape)
+                            .background(GoldYellow)
+                            .padding(6.dp)
+                    ) {
+                        Icon(Icons.Default.CameraAlt, contentDescription = "Edit Picture", tint = Color.Black, modifier = Modifier.size(16.dp))
+                    }
+                }
+                
+                Spacer(modifier = Modifier.height(24.dp))
+                
+                OutlinedTextField(
+                    value = editDisplayName,
+                    onValueChange = { editDisplayName = it },
+                    label = { Text("الاسم الظاهر", color = TextSecondary) },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = GoldYellow,
+                        unfocusedBorderColor = DarkGrey,
+                        focusedTextColor = Color.White,
+                        unfocusedTextColor = Color.White
+                    ),
+                    singleLine = true
+                )
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                OutlinedTextField(
+                    value = editUsername,
+                    onValueChange = { editUsername = it },
+                    label = { Text("اسم المستخدم (@)", color = TextSecondary) },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = GoldYellow,
+                        unfocusedBorderColor = DarkGrey,
+                        focusedTextColor = Color.White,
+                        unfocusedTextColor = Color.White
+                    ),
+                    singleLine = true
+                )
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                OutlinedTextField(
+                    value = editBio,
+                    onValueChange = { if (it.length <= 150) editBio = it },
+                    label = { Text("النبذة الشخصية", color = TextSecondary) },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = GoldYellow,
+                        unfocusedBorderColor = DarkGrey,
+                        focusedTextColor = Color.White,
+                        unfocusedTextColor = Color.White
+                    ),
+                    maxLines = 3
+                )
+                Text("${editBio.length} / 150", color = TextSecondary, fontSize = 12.sp, modifier = Modifier.align(Alignment.End).padding(top = 4.dp))
+                
+                Spacer(modifier = Modifier.height(32.dp))
+                
+                Button(
+                    onClick = {
+                        isSaving = true
+                        val newProfile = UserProfile(
+                            displayName = editDisplayName.trim(),
+                            username = editUsername.trim().removePrefix("@"),
+                            bio = editBio.trim(),
+                            profilePictureUrl = editProfilePicture
+                        )
+                        viewModel.updateUserProfile(newProfile) {
+                            isSaving = false
+                            scope.launch { sheetState.hide() }.invokeOnCompletion {
+                                if (!sheetState.isVisible) showEditSheet = false
+                            }
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth().height(50.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = GoldYellow),
+                    enabled = !isSaving
+                ) {
+                    if (isSaving) {
+                        CircularProgressIndicator(color = Color.Black, modifier = Modifier.size(24.dp))
+                    } else {
+                        Text("حفظ التغييرات", color = Color.Black, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                    }
+                }
+                
+                Spacer(modifier = Modifier.height(32.dp))
+            }
         }
     }
 }

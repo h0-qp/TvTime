@@ -29,7 +29,10 @@ class AuthRepository {
                     "uid" to user.uid,
                     "email" to user.email
                 )
-                db.collection("users").document(user.uid).set(userMap)
+                val docRef = db.collection("users").document(user.uid)
+                if (!docRef.get().await().exists()) {
+                    docRef.set(userMap)
+                }
             }
             Result.success(Unit)
         } catch (e: kotlinx.coroutines.TimeoutCancellationException) {
@@ -50,7 +53,10 @@ class AuthRepository {
                     "uid" to user.uid,
                     "email" to user.email
                 )
-                db.collection("users").document(user.uid).set(userMap)
+                val docRef = db.collection("users").document(user.uid)
+                if (!docRef.get().await().exists()) {
+                    docRef.set(userMap)
+                }
             }
             Result.success(Unit)
         } catch (e: kotlinx.coroutines.TimeoutCancellationException) {
@@ -69,13 +75,16 @@ class AuthRepository {
             
             val user = authResult.user
             if (user != null) {
-                val userMap = hashMapOf(
-                    "uid" to user.uid,
-                    "email" to user.email,
-                    "displayName" to user.displayName,
-                    "photoUrl" to user.photoUrl?.toString()
-                )
-                db.collection("users").document(user.uid).set(userMap)
+                val docRef = db.collection("users").document(user.uid)
+                if (!docRef.get().await().exists()) {
+                    val userMap = hashMapOf(
+                        "uid" to user.uid,
+                        "email" to user.email,
+                        "displayName" to user.displayName,
+                        "photoUrl" to user.photoUrl?.toString()
+                    )
+                    docRef.set(userMap)
+                }
             }
             Result.success(Unit)
         } catch (e: kotlinx.coroutines.TimeoutCancellationException) {
@@ -92,11 +101,14 @@ class AuthRepository {
             }
             val user = authResult.user
             if (user != null) {
-                val userMap = hashMapOf(
-                    "uid" to user.uid,
-                    "isAnonymous" to true
-                )
-                db.collection("users").document(user.uid).set(userMap)
+                val docRef = db.collection("users").document(user.uid)
+                if (!docRef.get().await().exists()) {
+                    val userMap = hashMapOf(
+                        "uid" to user.uid,
+                        "isAnonymous" to true
+                    )
+                    docRef.set(userMap)
+                }
             }
             Result.success(Unit)
         } catch (e: kotlinx.coroutines.TimeoutCancellationException) {

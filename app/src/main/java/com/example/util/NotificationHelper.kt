@@ -38,7 +38,8 @@ object NotificationHelper {
         )
 
         val builder = NotificationCompat.Builder(context, CHANNEL_ID)
-            .setSmallIcon(android.R.drawable.ic_dialog_info) // built-in icon for now
+            .setSmallIcon(R.drawable.ic_notification) // custom TV icon
+            .setColor(android.graphics.Color.parseColor("#FFD700")) // GoldYellow
             .setContentTitle(title)
             .setContentText(content)
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
