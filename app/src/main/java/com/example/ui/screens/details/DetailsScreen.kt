@@ -1,4 +1,6 @@
 package com.example.ui.screens.details
+import kotlinx.coroutines.launch
+import androidx.compose.material.icons.filled.Image
 
 import androidx.compose.foundation.border
 import androidx.compose.foundation.background
@@ -72,6 +74,8 @@ fun DetailsScreen(
         factory = DetailsViewModelFactory(repository, firestoreRepository, mediaId, mediaType)
     )
     val uiState by viewModel.uiState.collectAsState()
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val coroutineScope = androidx.compose.runtime.rememberCoroutineScope()
     var selectedTab by rememberSaveable { mutableIntStateOf(0) }
     val detailsScrollState = rememberScrollState()
     val seasonsListState = rememberLazyListState()
@@ -188,7 +192,7 @@ fun DetailsScreen(
                                     isEpWatched
                                 )
                             },
-                            showTitle = state.mediaItem.name ?: state.mediaItem.title ?: "Unknown",
+                            showTitle = state.mediaItem.name ?: state.mediaItem.title ?: state.mediaItem.name ?: "" ?: "Unknown",
                             onNavigateBack = { handleBack() }
                         )
                     } else {
@@ -536,15 +540,21 @@ fun DetailsScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clickable {
-                                if (text == "إزالة العرض" && uiState is DetailsUiState.Success) {
+                                if (uiState is DetailsUiState.Success) {
                                     val state = uiState as DetailsUiState.Success
-                                    if (state.isInWatchlist) {
-                                        viewModel.toggleWatchlist()
+                                    when (text) {
+                                        "إزالة العرض" -> {
+                                            if (state.isInWatchlist) {
+                                                viewModel.toggleWatchlist()
+                                            }
+                                        }
+                                        "مشاركة" -> {
+                                            val shareText = "شاهد ${state.mediaItem.title ?: state.mediaItem.name ?: ""} على TrackVerse!\nhttps://www.themoviedb.org/${if (mediaType == "movie") "movie" else "tv"}/${mediaId}"
+                                            com.example.util.ShareHelper.shareText(context, state.mediaItem.title ?: state.mediaItem.name ?: "", shareText)
+                                        }
                                     }
-                                    showBottomSheet = false
-                                } else {
-                                    showBottomSheet = false
                                 }
+                                showBottomSheet = false
                             }
                             .padding(horizontal = 16.dp, vertical = 16.dp),
                         verticalAlignment = Alignment.CenterVertically,
