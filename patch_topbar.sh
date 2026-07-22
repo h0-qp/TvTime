@@ -1,2 +1,0 @@
-#!/bin/bash
-sed -i 's/colors = TopAppBarDefaults.topAppBarColors(/actions = {\n                    IconButton(onClick = { showBottomSheet = true }) {\n                        Icon(Icons.Default.MoreVert, contentDescription = "Options", tint = TextPrimary)\n                    }\n                },\n                colors = TopAppBarDefaults.topAppBarColors(/g' app/src/main/java/com/example/ui/screens/details/DetailsScreen.kt

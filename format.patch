@@ -1,7 +1,0 @@
---- app/src/main/java/com/example/ui/screens/profile/ProfileScreen.kt
-+++ app/src/main/java/com/example/ui/screens/profile/ProfileScreen.kt
-@@ -273,3 +273,3 @@
-                         Text(
--                            text = totalEpisodesWatched.toArabicDigits(),
-+                            text = java.text.NumberFormat.getNumberInstance(java.util.Locale.US).format(totalEpisodesWatched).map { char -> if (char in '0'..'9') (char - '0' + 0x0660).toChar() else char }.joinToString(""),
-                             color = Color.White,
