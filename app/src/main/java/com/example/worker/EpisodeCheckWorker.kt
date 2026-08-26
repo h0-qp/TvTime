@@ -22,12 +22,13 @@ class EpisodeCheckWorker(
         val apiKey = BuildConfig.TMDB_API_KEY
         if (apiKey.isEmpty()) return Result.failure()
 
-        val mediaDao = AppDatabase.getDatabase(applicationContext).mediaDao()
         val tmdbApi = RetrofitClient.tmdbApi
 
         try {
-            // Get tracked TV shows
-            val tvShows = mediaDao.getMediaItemsByType("tv").first()
+            // Get tracked TV shows from Firestore
+            val firestoreRepository = com.example.data.firebase.FirestoreRepository()
+            val userMedia = firestoreRepository.observeUserMedia().first()
+            val tvShows = userMedia.filter { it.mediaType == "tv" }
 
             val todayFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
             val todayDateStr = todayFormat.format(Date())
@@ -38,14 +39,18 @@ class EpisodeCheckWorker(
                     apiKey = apiKey
                 )
 
-                details.next_episode_to_air?.let { nextEpisode ->
-                    if (nextEpisode.air_date == todayDateStr) {
-                        NotificationHelper.showNotification(
-                            applicationContext,
-                            "New Episode Today!",
-                            "A new episode of ${show.title ?: details.name} is airing today!"
-                        )
-                    }
+                val nextEpisode = details.next_episode_to_air
+                val lastEpisode = details.last_episode_to_air
+                
+                val hasEpisodeToday = (nextEpisode?.air_date == todayDateStr) || (lastEpisode?.air_date == todayDateStr)
+
+                if (hasEpisodeToday) {
+                    val episode = if (nextEpisode?.air_date == todayDateStr) nextEpisode else lastEpisode
+                    NotificationHelper.showNotification(
+                        applicationContext,
+                        "حلقة جديدة اليوم!",
+                        "حلقة جديدة من ${show.title.ifEmpty { details.name }} تُعرض اليوم!"
+                    )
                 }
             }
 

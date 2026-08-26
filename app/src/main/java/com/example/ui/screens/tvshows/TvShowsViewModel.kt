@@ -28,7 +28,8 @@ data class UpcomingEpisodeData(
     val show: FirestoreMediaItem,
     val showDetails: MediaItem,
     val episodeToAir: EpisodeToAir,
-    val daysDifference: Long
+    val daysDifference: Long,
+    val showNewBadge: Boolean = false
 )
 
 // Watchlist 
@@ -388,6 +389,20 @@ class TvShowsViewModel(
                             
                             if (targetSeason != null) {
                                 val seasonDetails = repository.getSeasonDetails(apiKey, media.id, targetSeason).getOrNull()
+                                
+                                val processEpisode = { ep: EpisodeToAir? ->
+                                    if (ep != null && ep.air_date?.isNotEmpty() == true) {
+                                        val airDate = try { LocalDate.parse(ep.air_date) } catch (e: Exception) { null }
+                                        if (airDate != null) {
+                                            val diff = ChronoUnit.DAYS.between(today, airDate)
+                                            if (diff >= -30) {
+                                                val showNewBadge = (diff == 0L || diff == -1L)
+                                                epDataList.add(UpcomingEpisodeData(media, details, ep, diff, showNewBadge))
+                                            }
+                                        }
+                                    }
+                                }
+                                
                                 if (seasonDetails != null) {
                                     seasonDetails.episodes.forEach { episode ->
                                         if (episode.air_date != null && episode.air_date.isNotEmpty()) {
@@ -395,6 +410,7 @@ class TvShowsViewModel(
                                             if (airDate != null) {
                                                 val diff = ChronoUnit.DAYS.between(today, airDate)
                                                 if (diff >= -30) {
+                                                    val showNewBadge = (diff == 0L || diff == -1L)
                                                     val episodeToAir = EpisodeToAir(
                                                         id = episode.id,
                                                         name = episode.name,
@@ -404,27 +420,20 @@ class TvShowsViewModel(
                                                         season_number = episode.season_number,
                                                         still_path = episode.still_path
                                                     )
-                                                    epDataList.add(UpcomingEpisodeData(media, details, episodeToAir, diff))
+                                                    epDataList.add(UpcomingEpisodeData(media, details, episodeToAir, diff, showNewBadge))
                                                 }
                                             }
                                         }
                                     }
-                                } else {
-                                    if (nextEpisode != null) {
-                                        val airDate = try { LocalDate.parse(nextEpisode.air_date) } catch (e: Exception) { null }
-                                        if (airDate != null) {
-                                            val diff = ChronoUnit.DAYS.between(today, airDate)
-                                            epDataList.add(UpcomingEpisodeData(media, details, nextEpisode, diff))
-                                        }
-                                    } else if (lastEpisode != null) {
-                                        val airDate = try { LocalDate.parse(lastEpisode.air_date) } catch (e: Exception) { null }
-                                        if (airDate != null) {
-                                            val diff = ChronoUnit.DAYS.between(today, airDate)
-                                            if (diff >= -30) {
-                                                epDataList.add(UpcomingEpisodeData(media, details, lastEpisode, diff))
-                                            }
-                                        }
-                                    }
+                                }
+                                
+                                // Ensure lastEpisode is included if it wasn't in seasonDetails (e.g. from previous season)
+                                if (lastEpisode != null && epDataList.none { it.episodeToAir.id == lastEpisode.id }) {
+                                    processEpisode(lastEpisode)
+                                }
+                                // Ensure nextEpisode is included if seasonDetails failed or missed it
+                                if (nextEpisode != null && epDataList.none { it.episodeToAir.id == nextEpisode.id }) {
+                                    processEpisode(nextEpisode)
                                 }
                             }
                         }

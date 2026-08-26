@@ -1,6 +1,9 @@
 package com.example.ui.screens.profile
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.background
+import androidx.compose.ui.Alignment
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -65,6 +68,21 @@ fun AllMoviesScreen(
                         modifier = Modifier.fillMaxSize(),
                         contentScale = ContentScale.Crop
                     )
+                    if (movie.watched) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(Color.Black.copy(alpha = 0.6f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Check,
+                                contentDescription = "Watched",
+                                tint = Color.White.copy(alpha = 0.8f),
+                                modifier = Modifier.size(32.dp)
+                            )
+                        }
+                    }
                 }
             }
         }

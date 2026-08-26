@@ -61,11 +61,14 @@ fun TvShowsScreen(
             } else if (selectedTab == 0) {
                 if (!hasUpcomingAutoScrolled) {
                     val pastEpisodes = success.upcomingEpisodes.filter { it.daysDifference < 0L }
-                    if (pastEpisodes.isNotEmpty()) {
-                        val pastGroups = pastEpisodes
-                            .groupBy { try { LocalDate.parse(it.episodeToAir.air_date) } catch (e: Exception) { null } }
-                            .filterKeys { it != null }
-                        val targetIndex = pastGroups.size + pastEpisodes.size
+                    val pastGroups = pastEpisodes
+                        .groupBy { epData ->
+                            try { LocalDate.parse(epData.episodeToAir.air_date) } catch (e: Exception) { null }
+                        }
+                        .filterKeys { it != null }
+                    
+                    val targetIndex = pastGroups.size + pastEpisodes.size
+                    if (targetIndex > 0) {
                         upcomingListState.scrollToItem(targetIndex)
                     }
                     hasUpcomingAutoScrolled = true
@@ -203,33 +206,33 @@ fun TvShowsScreen(
                             .filterKeys { it != null }
                             .toSortedMap(compareBy { it })
 
-                        val pastGroups = pastEpisodes
-                            .groupBy { epData ->
-                                try { LocalDate.parse(epData.episodeToAir.air_date) } catch (e: Exception) { null }
-                            }
-                            .filterKeys { it != null }
-                            .toSortedMap(compareByDescending { it })
+                    val pastGroups = pastEpisodes
+                        .groupBy { epData ->
+                            try { LocalDate.parse(epData.episodeToAir.air_date) } catch (e: Exception) { null }
+                        }
+                        .filterKeys { it != null }
+                        .toSortedMap(compareBy { it }) // Ascending: Oldest at the top
 
-                        LazyColumn(
-                            state = upcomingListState,
-                            modifier = Modifier.fillMaxSize(),
-                            contentPadding = PaddingValues(bottom = 100.dp)
-                        ) {
-                            // 1. Past/Recently aired episodes (if any)
-                            pastGroups.forEach { (date, eps) ->
-                                item {
-                                    SectionHeader(formatArabicDate(date!!))
-                                }
-                                items(eps, key = { "past_${it.show.id}_${it.episodeToAir.id}" }) { ep ->
-                                    UpcomingEpisodeCard(
-                                        epData = ep,
-                                        onNavigateToDetails = onNavigateToDetails,
-                                        modifier = Modifier.animateItemPlacement()
-                                    )
-                                }
+                    LazyColumn(
+                        state = upcomingListState,
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(bottom = 100.dp)
+                    ) {
+                        // 1. Past/Recently aired episodes (if any)
+                        pastGroups.forEach { (date, eps) ->
+                            item {
+                                SectionHeader(formatArabicDate(date!!))
                             }
+                            items(eps, key = { "past_${it.show.id}_${it.episodeToAir.id}" }) { ep ->
+                                UpcomingEpisodeCard(
+                                    epData = ep,
+                                    onNavigateToDetails = onNavigateToDetails,
+                                    modifier = Modifier.animateItemPlacement()
+                                )
+                            }
+                        }
 
-                            // 2. Today's episodes
+                        // 2. Today's episodes
                             if (todayEpisodes.isNotEmpty()) {
                                 item { SectionHeader("اليوم") }
                                 items(todayEpisodes, key = { "today_${it.show.id}_${it.episodeToAir.id}" }) { ep ->
@@ -422,19 +425,21 @@ fun UpcomingEpisodeCard(
             )
 
             // "جديد" Badge
-            Box(
-                modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .padding(4.dp)
-                    .background(GoldYellow, RoundedCornerShape(4.dp))
-                    .padding(horizontal = 6.dp, vertical = 2.dp)
-            ) {
-                Text(
-                    text = "جديد",
-                    color = TrueBlack,
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.Bold
-                )
+            if (epData.showNewBadge) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .padding(4.dp)
+                        .background(GoldYellow, RoundedCornerShape(4.dp))
+                        .padding(horizontal = 6.dp, vertical = 2.dp)
+                ) {
+                    Text(
+                        text = "جديد",
+                        color = TrueBlack,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
             }
         }
 

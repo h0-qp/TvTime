@@ -202,22 +202,8 @@ fun MoviesScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = 4.dp),
-            contentAlignment = Alignment.Center
+            contentAlignment = Alignment.CenterEnd
         ) {
-            // Center Badge
-            Box(
-                modifier = Modifier
-                    .background(Color(0xFF333333), RoundedCornerShape(16.dp))
-                    .padding(horizontal = 16.dp, vertical = 6.dp)
-            ) {
-                Text(
-                    text = if (selectedTab == 1) "شاهد التالي" else "لاحقاً",
-                    color = Color.White,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-            
             // Right Toggle Icon Button (في أعلى الشاشة جهة اليمين لتشابه التصميم الأصلي)
             IconButton(
                 onClick = { isGridView = !isGridView },
@@ -312,7 +298,7 @@ fun MoviesScreen(
                         // Upcoming Screen
                         val pastMovies = moviesWithDetails
                             .filter { it.daysDiff != null && it.daysDiff < 0 }
-                            .sortedBy { it.daysDiff } // chronological order (oldest first)
+                            .sortedByDescending { it.daysDiff } // chronological order (recent past first)
 
                         val futureAndUndatedMovies = moviesWithDetails
                             .filter { it.daysDiff == null || it.daysDiff >= 0 }
@@ -334,20 +320,20 @@ fun MoviesScreen(
                                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                                         verticalArrangement = Arrangement.spacedBy(8.dp)
                                     ) {
-                                        groupedPastMovies.forEach { (date, moviesInDate) ->
-                                            item(span = { GridItemSpan(maxLineSpan) }) {
-                                                SectionHeader(date)
-                                            }
-                                            items(moviesInDate) { movieItem ->
-                                                UpcomingMovieGridCard(movieItem, onNavigateToDetails)
-                                            }
-                                        }
-                                        
                                         if (futureAndUndatedMovies.isNotEmpty()) {
                                             item(span = { GridItemSpan(maxLineSpan) }) {
                                                 SectionHeader("لاحقاً")
                                             }
                                             items(futureAndUndatedMovies) { movieItem ->
+                                                UpcomingMovieGridCard(movieItem, onNavigateToDetails)
+                                            }
+                                        }
+
+                                        groupedPastMovies.forEach { (date, moviesInDate) ->
+                                            item(span = { GridItemSpan(maxLineSpan) }) {
+                                                SectionHeader(date)
+                                            }
+                                            items(moviesInDate) { movieItem ->
                                                 UpcomingMovieGridCard(movieItem, onNavigateToDetails)
                                             }
                                         }
@@ -358,20 +344,20 @@ fun MoviesScreen(
                                         modifier = Modifier.fillMaxSize(),
                                         contentPadding = PaddingValues(bottom = 16.dp)
                                     ) {
-                                        groupedPastMovies.forEach { (date, moviesInDate) ->
-                                            item {
-                                                SectionHeader(date)
-                                            }
-                                            items(moviesInDate) { movieItem ->
-                                                UpcomingMovieCard(movieItem, onNavigateToDetails)
-                                            }
-                                        }
-                                        
                                         if (futureAndUndatedMovies.isNotEmpty()) {
                                             item {
                                                 SectionHeader("لاحقاً")
                                             }
                                             items(futureAndUndatedMovies) { movieItem ->
+                                                UpcomingMovieCard(movieItem, onNavigateToDetails)
+                                            }
+                                        }
+
+                                        groupedPastMovies.forEach { (date, moviesInDate) ->
+                                            item {
+                                                SectionHeader(date)
+                                            }
+                                            items(moviesInDate) { movieItem ->
                                                 UpcomingMovieCard(movieItem, onNavigateToDetails)
                                             }
                                         }

@@ -41,6 +41,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.material.icons.filled.Check
 import coil.compose.AsyncImage
 import com.example.data.firebase.AuthRepository
 import com.example.data.firebase.FirestoreRepository
@@ -695,5 +696,20 @@ fun MediaPosterItem(item: FirestoreMediaItem, onNavigateToDetails: (String, Int)
             contentScale = ContentScale.Crop,
             modifier = Modifier.fillMaxSize()
         )
+        if (item.watched) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.6f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Check,
+                    contentDescription = "Watched",
+                    tint = Color.White.copy(alpha = 0.8f),
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+        }
     }
 }
