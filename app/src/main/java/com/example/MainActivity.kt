@@ -254,6 +254,22 @@ fun TrackVerseApp(appContainer: com.example.data.AppContainer) {
                     mediaId = mediaId,
                     mediaType = mediaType,
                     onNavigateBack = { navController.popBackStack() },
+                    onNavigateToDetails = { type, id -> navController.navigate("details/$type/$id") },
+                    onNavigateToPerson = { id -> navController.navigate("person/$id") }
+                )
+            }
+            
+            composable(
+                route = "person/{personId}",
+                arguments = listOf(
+                    androidx.navigation.navArgument("personId") { type = androidx.navigation.NavType.IntType }
+                )
+            ) { backStackEntry ->
+                val personId = backStackEntry.arguments?.getInt("personId") ?: 0
+                com.example.ui.screens.person.PersonScreen(
+                    repository = appContainer.mediaRepository,
+                    personId = personId,
+                    onNavigateBack = { navController.popBackStack() },
                     onNavigateToDetails = { type, id -> navController.navigate("details/$type/$id") }
                 )
             }

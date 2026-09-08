@@ -155,4 +155,13 @@ class MediaRepository(
             Result.failure(e)
         }
     }
+
+    suspend fun getPersonDetails(apiKey: String, personId: Int): Result<com.example.data.remote.PersonDetails> {
+        return try {
+            val response = tmdbApi.getPersonDetails(personId, apiKey, "ar")
+            Result.success(response)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
 }

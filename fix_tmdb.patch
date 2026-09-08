@@ -1,0 +1,31 @@
+--- app/src/main/java/com/example/data/remote/TmdbApi.kt
++++ app/src/main/java/com/example/data/remote/TmdbApi.kt
+@@ -98,7 +98,6 @@
+     ): MediaItem
+ 
+     @GET("movie/{movie_id}")
+-    @GET("person/{person_id}")
+-    suspend fun getPersonDetails(
+-        @Path("person_id") personId: Int,
+-        @Query("api_key") apiKey: String,
+-        @Query("language") language: String = "ar",
+-        @Query("append_to_response") appendToResponse: String = "combined_credits"
+-    ): PersonDetails
+-
+     suspend fun getMovieDetails(
+         @Path("movie_id") movieId: Int,
+         @Query("api_key") apiKey: String,
+@@ -106,6 +105,13 @@
+         @Query("append_to_response") appendToResponse: String = "credits,similar,videos,watch/providers"
+     ): MediaItem
+         
++    @GET("person/{person_id}")
++    suspend fun getPersonDetails(
++        @Path("person_id") personId: Int,
++        @Query("api_key") apiKey: String,
++        @Query("language") language: String = "ar",
++        @Query("append_to_response") appendToResponse: String = "combined_credits"
++    ): PersonDetails
++
+     @GET("tv/{tv_id}/season/{season_number}")
+     suspend fun getSeasonDetails(

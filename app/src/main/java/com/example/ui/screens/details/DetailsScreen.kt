@@ -68,6 +68,7 @@ fun DetailsScreen(
     mediaType: String,
     onNavigateBack: () -> Unit,
     onNavigateToDetails: (String, Int) -> Unit,
+    onNavigateToPerson: ((Int) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val viewModel: DetailsViewModel = viewModel(
@@ -350,7 +351,7 @@ fun DetailsScreen(
                             
                             if (selectedTab == 0) {
                                 // About Tab
-                                AboutTabContent(item = item, collectionDetails = state.collectionDetails, onNavigateToDetails = onNavigateToDetails)
+                                AboutTabContent(item = item, collectionDetails = state.collectionDetails, onNavigateToDetails = onNavigateToDetails, onNavigateToPerson = onNavigateToPerson)
                             } else if (selectedTab == 1 && mediaType != "tv") {
                                 // More Tab (Movies)
                                 MoreTabContent(item = item)
@@ -685,7 +686,7 @@ fun DetailsScreen(
 }
 
 @Composable
-fun AboutTabContent(item: MediaItem, collectionDetails: com.example.data.remote.CollectionDetailsResponse?, onNavigateToDetails: (String, Int) -> Unit) {
+fun AboutTabContent(item: MediaItem, collectionDetails: com.example.data.remote.CollectionDetailsResponse?, onNavigateToDetails: (String, Int) -> Unit, onNavigateToPerson: ((Int) -> Unit)? = null) {
     Column(modifier = Modifier.fillMaxWidth()) {
         // "أين تُشاهد" section
         Row(
@@ -820,7 +821,7 @@ fun AboutTabContent(item: MediaItem, collectionDetails: com.example.data.remote.
             Spacer(modifier = Modifier.height(16.dp))
             LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 items(item.credits.cast.take(10)) { cast ->
-                    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.width(80.dp)) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.width(80.dp).clickable { onNavigateToPerson?.invoke(cast.id) }) {
                         AsyncImage(
                             model = cast.profile_path?.let { "https://image.tmdb.org/t/p/w185$it" },
                             contentDescription = cast.name,

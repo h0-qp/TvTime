@@ -1,0 +1,39 @@
+--- app/src/main/java/com/example/data/remote/TmdbApi.kt
++++ app/src/main/java/com/example/data/remote/TmdbApi.kt
+@@ -102,6 +102,14 @@
+         @Query("language") language: String = "en-US",
+         @Query("append_to_response") appendToResponse: String = "credits,similar,videos,watch/providers"
+     ): MediaItem
++
++    @GET("person/{person_id}")
++    suspend fun getPersonDetails(
++        @Path("person_id") personId: Int,
++        @Query("api_key") apiKey: String,
++        @Query("language") language: String = "ar",
++        @Query("append_to_response") appendToResponse: String = "combined_credits"
++    ): PersonDetails
+         
+     @GET("tv/{tv_id}/season/{season_number}")
+     suspend fun getSeasonDetails(
+@@ -165,6 +173,21 @@
+     val backdrop_path: String?,
+     val parts: List<MediaItem>
+ )
++
++data class PersonDetails(
++    val id: Int,
++    val name: String,
++    val biography: String?,
++    val birthday: String?,
++    val deathday: String?,
++    val gender: Int?,
++    val profile_path: String?,
++    val combined_credits: CombinedCredits?
++)
++
++data class CombinedCredits(
++    val cast: List<MediaItem>
++)
+ 
+ data class EpisodeToAir(
+     val id: Int,

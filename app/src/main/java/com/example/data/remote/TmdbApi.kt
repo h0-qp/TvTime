@@ -97,6 +97,12 @@ interface TmdbApi {
         @Query("append_to_response") appendToResponse: String = "credits,similar,videos,watch/providers"
     ): MediaItem
 
+
+
+
+    
+
+    
     @GET("movie/{movie_id}")
     suspend fun getMovieDetails(
         @Path("movie_id") movieId: Int,
@@ -104,7 +110,15 @@ interface TmdbApi {
         @Query("language") language: String = "en-US",
         @Query("append_to_response") appendToResponse: String = "credits,similar,videos,watch/providers"
     ): MediaItem
-    
+
+    @GET("person/{person_id}")
+    suspend fun getPersonDetails(
+        @Path("person_id") personId: Int,
+        @Query("api_key") apiKey: String,
+        @Query("language") language: String = "ar",
+        @Query("append_to_response") appendToResponse: String = "combined_credits"
+    ): PersonDetails
+
     @GET("tv/{tv_id}/season/{season_number}")
     suspend fun getSeasonDetails(
         @Path("tv_id") tvId: Int,
@@ -247,4 +261,19 @@ data class WatchProviderItem(
     val provider_id: Int,
     val provider_name: String,
     val logo_path: String?
+)
+
+data class PersonDetails(
+    val id: Int,
+    val name: String,
+    val biography: String?,
+    val birthday: String?,
+    val deathday: String?,
+    val gender: Int?,
+    val profile_path: String?,
+    val combined_credits: CombinedCredits?
+)
+
+data class CombinedCredits(
+    val cast: List<MediaItem>
 )
