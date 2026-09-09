@@ -521,6 +521,7 @@ fun DetailsScreen(
                     context.contentResolver.openInputStream(u)?.readBytes()
                 }
                 viewModel.addComment(text, bytes, isGif)
+                android.widget.Toast.makeText(context, "جاري نشر التعليق...", android.widget.Toast.LENGTH_SHORT).show()
             }
         )
     }

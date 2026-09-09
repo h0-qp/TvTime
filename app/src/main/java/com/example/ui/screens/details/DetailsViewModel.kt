@@ -299,7 +299,11 @@ class DetailsViewModel(
                     timestamp = System.currentTimeMillis(),
                     isGif = isGif
                 )
-                firestoreRepository.addComment(comment, imageBytes)
+                val result = firestoreRepository.addComment(comment, imageBytes)
+                if (result.isFailure) {
+                    val exception = result.exceptionOrNull()
+                    android.util.Log.e("DetailsViewModel", "Failed to add comment", exception)
+                }
             }
         }
     }

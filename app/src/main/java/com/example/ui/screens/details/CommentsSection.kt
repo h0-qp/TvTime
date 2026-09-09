@@ -55,8 +55,10 @@ fun CommentsScreenFullScreen(
         onDismissRequest = onClose,
         properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)
     ) {
-        Scaffold(contentWindowInsets = WindowInsets.navigationBars,
+        Scaffold(
+            modifier = Modifier.fillMaxSize().imePadding(),
             containerColor = TrueBlack,
+            contentWindowInsets = WindowInsets(0, 0, 0, 0),
             topBar = {
                 Row(
                     modifier = Modifier
@@ -82,7 +84,7 @@ fun CommentsScreenFullScreen(
             },
             floatingActionButton = {
                 FloatingActionButton(
-                    modifier = Modifier.padding(bottom = 32.dp, start = 16.dp),
+                    modifier = Modifier.navigationBarsPadding().padding(bottom = 16.dp, start = 16.dp),
                     onClick = { showAddDialog = true },
                     containerColor = Color.White,
                     contentColor = TrueBlack,
@@ -213,8 +215,10 @@ fun AddCommentFullScreenDialog(
         onDismissRequest = onClose,
         properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)
     ) {
-        Scaffold(contentWindowInsets = WindowInsets.navigationBars,
+        Scaffold(
+            modifier = Modifier.fillMaxSize().imePadding(),
             containerColor = TrueBlack,
+            contentWindowInsets = WindowInsets(0, 0, 0, 0),
             topBar = {
                 Row(
                     modifier = Modifier
@@ -230,6 +234,7 @@ fun AddCommentFullScreenDialog(
                             .clickable {
                                 if (text.isNotBlank() || selectedImageUri != null) {
                                     onPublish(text, selectedImageUri, false)
+                                    onClose()
                                 }
                             }
                             .padding(horizontal = 16.dp, vertical = 8.dp)
@@ -250,26 +255,32 @@ fun AddCommentFullScreenDialog(
                 }
             },
             bottomBar = {
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 32.dp),
-                    horizontalArrangement = Arrangement.End,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Gif,
-                        contentDescription = "GIF",
-                        tint = TextSecondary,
-                        modifier = Modifier.size(32.dp).clickable { /* TODO: GIF picker */ }
-                    )
-                    Spacer(modifier = Modifier.width(16.dp))
-                    Icon(
-                        imageVector = Icons.Default.Image,
-                        contentDescription = "Image",
-                        tint = TextSecondary,
-                        modifier = Modifier.size(28.dp).clickable {
-                            imagePicker.launch(androidx.activity.result.PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
-                        }
-                    )
+                Column {
+                    HorizontalDivider(color = DarkGrey)
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .navigationBarsPadding()
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                        horizontalArrangement = Arrangement.End,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Gif,
+                            contentDescription = "GIF",
+                            tint = TextSecondary,
+                            modifier = Modifier.size(32.dp).clickable { /* TODO: GIF picker */ }
+                        )
+                        Spacer(modifier = Modifier.width(16.dp))
+                        Icon(
+                            imageVector = Icons.Default.Image,
+                            contentDescription = "Image",
+                            tint = TextSecondary,
+                            modifier = Modifier.size(28.dp).clickable {
+                                imagePicker.launch(androidx.activity.result.PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                            }
+                        )
+                    }
                 }
             }
         ) { paddingValues ->
