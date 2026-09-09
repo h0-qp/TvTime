@@ -11,31 +11,21 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.ArrowForward
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Image
-import androidx.compose.material.icons.filled.Gif
-import androidx.compose.material.icons.outlined.ChatBubbleOutline
-import androidx.compose.material.icons.outlined.FavoriteBorder
-import androidx.compose.material.icons.outlined.Reply
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import coil.compose.AsyncImage
-import com.example.data.firebase.Comment
 import com.example.ui.theme.DarkGrey
 import com.example.ui.theme.TextPrimary
 import com.example.ui.theme.TextSecondary
@@ -43,11 +33,12 @@ import com.example.ui.theme.TrueBlack
 import java.text.SimpleDateFormat
 import java.util.*
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CommentsScreenFullScreen(
-    comments: List<Comment>,
+    comments: List<com.example.data.firebase.Comment>,
     onClose: () -> Unit,
-    onAddComment: (text: String, imageUri: Uri?, isGif: Boolean) -> Unit
+    onAddComment: (String, Uri?, Boolean) -> Unit
 ) {
     var showAddDialog by remember { mutableStateOf(false) }
 
@@ -84,7 +75,7 @@ fun CommentsScreenFullScreen(
             },
             floatingActionButton = {
                 FloatingActionButton(
-                    modifier = Modifier.navigationBarsPadding().padding(bottom = 16.dp, start = 16.dp),
+                    modifier = Modifier.navigationBarsPadding().padding(bottom = 64.dp, start = 16.dp),
                     onClick = { showAddDialog = true },
                     containerColor = Color.White,
                     contentColor = TrueBlack,
@@ -113,7 +104,6 @@ fun CommentsScreenFullScreen(
             }
         }
     }
-
     if (showAddDialog) {
         AddCommentFullScreenDialog(
             onClose = { showAddDialog = false },
@@ -126,17 +116,17 @@ fun CommentsScreenFullScreen(
 }
 
 @Composable
-fun CommentItem(comment: Comment) {
-    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
+fun CommentItem(comment: com.example.data.firebase.Comment) {
+    Column(modifier = Modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.Top
         ) {
-            Icon(Icons.Default.Close, contentDescription = null, tint = TextSecondary, modifier = Modifier.size(16.dp).alpha(0f)) // Placeholder for menu
+            Icon(Icons.Default.MoreVert, contentDescription = "More", tint = TextSecondary, modifier = Modifier.size(20.dp))
             
             Row(verticalAlignment = Alignment.CenterVertically) {
-                val dateFormat = SimpleDateFormat("yyyy/MM/dd", Locale.US)
+                val dateFormat = SimpleDateFormat("yyyy/MM/dd", Locale.getDefault())
                 val dateStr = dateFormat.format(Date(comment.timestamp))
                 Text(text = dateStr, color = TextSecondary, fontSize = 12.sp)
                 Spacer(modifier = Modifier.width(8.dp))
@@ -215,78 +205,50 @@ fun AddCommentFullScreenDialog(
         onDismissRequest = onClose,
         properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)
     ) {
-        Scaffold(
-            modifier = Modifier.fillMaxSize(),
-            containerColor = TrueBlack,
-            contentWindowInsets = WindowInsets.safeDrawing,
-            topBar = {
-                Row(
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(TrueBlack)
+                .systemBarsPadding()
+                .imePadding()
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                        .clip(CircleShape)
+                        .background(DarkGrey)
+                        .clickable {
+                            if (text.isNotBlank() || selectedImageUri != null) {
+                                onPublish(text, selectedImageUri, false)
+                                onClose()
+                            }
+                        }
+                        .padding(horizontal = 16.dp, vertical = 8.dp)
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .clip(CircleShape)
-                            .background(DarkGrey)
-                            .clickable {
-                                if (text.isNotBlank() || selectedImageUri != null) {
-                                    onPublish(text, selectedImageUri, false)
-                                    onClose()
-                                }
-                            }
-                            .padding(horizontal = 16.dp, vertical = 8.dp)
-                    ) {
-                        Text("نشر", color = TextPrimary, fontSize = 14.sp)
-                    }
-                    
-                    Icon(
-                        imageVector = Icons.Default.Close,
-                        contentDescription = "Close",
-                        tint = TextPrimary,
-                        modifier = Modifier
-                            .clip(CircleShape)
-                            .background(DarkGrey)
-                            .clickable { onClose() }
-                            .padding(8.dp)
-                    )
+                    Text("نشر", color = TextPrimary, fontSize = 14.sp)
                 }
-            },
-            bottomBar = {
-                Column(modifier = Modifier.imePadding()) {
-                    HorizontalDivider(color = DarkGrey)
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 16.dp),
-                        horizontalArrangement = Arrangement.End,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Gif,
-                            contentDescription = "GIF",
-                            tint = TextSecondary,
-                            modifier = Modifier.size(32.dp).clickable { /* TODO: GIF picker */ }
-                        )
-                        Spacer(modifier = Modifier.width(16.dp))
-                        Icon(
-                            imageVector = Icons.Default.Image,
-                            contentDescription = "Image",
-                            tint = TextSecondary,
-                            modifier = Modifier.size(28.dp).clickable {
-                                imagePicker.launch(androidx.activity.result.PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
-                            }
-                        )
-                    }
-                }
+                
+                Icon(
+                    imageVector = Icons.Default.Close,
+                    contentDescription = "Close",
+                    tint = TextPrimary,
+                    modifier = Modifier
+                        .clip(CircleShape)
+                        .background(DarkGrey)
+                        .clickable { onClose() }
+                        .padding(8.dp)
+                )
             }
-        ) { paddingValues ->
+            
             Column(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues)
+                    .weight(1f)
                     .padding(16.dp)
             ) {
                 TextField(
@@ -327,6 +289,26 @@ fun AddCommentFullScreenDialog(
                                 .padding(4.dp)
                         )
                     }
+                }
+            }
+            
+            Column {
+                HorizontalDivider(color = DarkGrey)
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 16.dp),
+                    horizontalArrangement = Arrangement.Start,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Image,
+                        contentDescription = "Image",
+                        tint = TextSecondary,
+                        modifier = Modifier.size(28.dp).clickable {
+                            imagePicker.launch(androidx.activity.result.PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                        }
+                    )
                 }
             }
         }
