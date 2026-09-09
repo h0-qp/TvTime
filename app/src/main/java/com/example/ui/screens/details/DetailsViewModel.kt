@@ -1,5 +1,6 @@
 package com.example.ui.screens.details
 
+import com.example.data.firebase.Comment
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -24,7 +25,8 @@ sealed class DetailsUiState {
         val isLoadingSeason: Boolean = false,
         val selectedEpisodeDetails: com.example.data.remote.Episode? = null,
         val collectionDetails: com.example.data.remote.CollectionDetailsResponse? = null
-    ) : DetailsUiState()
+    ,
+        val comments: List<com.example.data.firebase.Comment> = emptyList()) : DetailsUiState()
     data class Error(val message: String) : DetailsUiState()
 }
 
@@ -42,7 +44,20 @@ class DetailsViewModel(
         fetchDetails()
     }
 
+    
+    private fun observeComments() {
+        viewModelScope.launch {
+            firestoreRepository.observeCommentsForMedia(mediaId.toString()).collect { commentsList ->
+                val currentState = _uiState.value
+                if (currentState is DetailsUiState.Success) {
+                    _uiState.value = currentState.copy(comments = commentsList)
+                }
+            }
+        }
+    }
+
     private fun fetchDetails() {
+        observeComments()
         viewModelScope.launch {
             _uiState.value = DetailsUiState.Loading
             val apiKey = BuildConfig.TMDB_API_KEY
@@ -269,8 +284,27 @@ class DetailsViewModel(
             }
         }
     }
-}
 
+    fun addComment(text: String, imageBytes: ByteArray?, isGif: Boolean = false) {
+        val currentState = _uiState.value
+        if (currentState is DetailsUiState.Success) {
+            viewModelScope.launch {
+                val user = firestoreRepository.getCurrentUser()
+                val comment = com.example.data.firebase.Comment(
+                    mediaId = mediaId.toString(),
+                    userId = user?.uid ?: "",
+                    userName = user?.displayName ?: "Unknown User",
+                    userProfileImage = user?.photoUrl?.toString(),
+                    text = text,
+                    timestamp = System.currentTimeMillis(),
+                    isGif = isGif
+                )
+                firestoreRepository.addComment(comment, imageBytes)
+            }
+        }
+    }
+
+}
 class DetailsViewModelFactory(
     private val repository: MediaRepository,
     private val firestoreRepository: FirestoreRepository,

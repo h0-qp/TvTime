@@ -1,4 +1,6 @@
 package com.example.ui.screens.details
+
+import androidx.compose.ui.platform.LocalContext
 import kotlinx.coroutines.launch
 import androidx.compose.material.icons.filled.Image
 
@@ -71,6 +73,11 @@ fun DetailsScreen(
     onNavigateToPerson: ((Int) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
+
+    var showComments by remember { mutableStateOf(false) }
+    
+
+
     val viewModel: DetailsViewModel = viewModel(
         factory = DetailsViewModelFactory(repository, firestoreRepository, mediaId, mediaType)
     )
@@ -185,6 +192,7 @@ fun DetailsScreen(
                         val isEpWatched = state.firestoreItem?.watchedEpisodes?.contains("S${state.selectedEpisodeDetails.season_number}E${state.selectedEpisodeDetails.episode_number}") == true
                         EpisodeDetailsContent(
                             episode = state.selectedEpisodeDetails,
+                            onCommentsClick = { showComments = true },
                             isWatched = isEpWatched,
                             onToggleWatched = { 
                                 onEpisodeClick(
@@ -351,7 +359,7 @@ fun DetailsScreen(
                             
                             if (selectedTab == 0) {
                                 // About Tab
-                                AboutTabContent(item = item, collectionDetails = state.collectionDetails, onNavigateToDetails = onNavigateToDetails, onNavigateToPerson = onNavigateToPerson)
+                                AboutTabContent(item = item, onCommentsClick = { showComments = true }, collectionDetails = state.collectionDetails, onNavigateToDetails = onNavigateToDetails, onNavigateToPerson = onNavigateToPerson)
                             } else if (selectedTab == 1 && mediaType != "tv") {
                                 // More Tab (Movies)
                                 MoreTabContent(item = item)
@@ -502,7 +510,22 @@ fun DetailsScreen(
                 }
             }
         }
-    if (showBottomSheet) {
+    
+    if (showComments) {
+        val comments = (uiState as? DetailsUiState.Success)?.comments ?: emptyList()
+        CommentsScreenFullScreen(
+            comments = comments,
+            onClose = { showComments = false },
+            onAddComment = { text, uri, isGif ->
+                val bytes = uri?.let { u ->
+                    context.contentResolver.openInputStream(u)?.readBytes()
+                }
+                viewModel.addComment(text, bytes, isGif)
+            }
+        )
+    }
+
+if (showBottomSheet) {
         ModalBottomSheet(
             onDismissRequest = { showBottomSheet = false },
             sheetState = sheetState,
@@ -683,10 +706,10 @@ fun DetailsScreen(
         }
     }
     }
-}
 
+}
 @Composable
-fun AboutTabContent(item: MediaItem, collectionDetails: com.example.data.remote.CollectionDetailsResponse?, onNavigateToDetails: (String, Int) -> Unit, onNavigateToPerson: ((Int) -> Unit)? = null) {
+fun AboutTabContent(item: MediaItem, onCommentsClick: () -> Unit, collectionDetails: com.example.data.remote.CollectionDetailsResponse?, onNavigateToDetails: (String, Int) -> Unit, onNavigateToPerson: ((Int) -> Unit)? = null) {
     Column(modifier = Modifier.fillMaxWidth()) {
         // "أين تُشاهد" section
         Row(
@@ -869,16 +892,25 @@ fun AboutTabContent(item: MediaItem, collectionDetails: com.example.data.remote.
             Spacer(modifier = Modifier.height(32.dp))
         }
 
-        Text(text = "التعليقات", color = TextPrimary, fontSize = 18.sp, fontWeight = FontWeight.Bold)
-        Spacer(modifier = Modifier.height(16.dp))
-        Text(text = "لا توجد تعليقات متاحة حالياً.", color = TextSecondary, fontSize = 14.sp)
+        Row(
+            modifier = Modifier.fillMaxWidth().clickable { onCommentsClick() }.padding(vertical = 8.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(Icons.Default.KeyboardArrowLeft, contentDescription = null, tint = TextSecondary, modifier = Modifier.size(20.dp))
+            Text(text = "التعليقات", color = TextPrimary, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+        }
         Spacer(modifier = Modifier.height(32.dp))
     }
-}
 
+
+
+
+}
 @Composable
 fun EpisodeDetailsContent(
     episode: com.example.data.remote.Episode,
+    onCommentsClick: () -> Unit,
     isWatched: Boolean,
     onToggleWatched: () -> Unit,
     showTitle: String,
@@ -1164,7 +1196,7 @@ fun EpisodeDetailsContent(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .clickable { /* Expand / navigate to comments */ }
+                .clickable { onCommentsClick() }
                 .padding(16.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
