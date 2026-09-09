@@ -75,6 +75,29 @@ fun DetailsScreen(
 ) {
 
     var showComments by remember { mutableStateOf(false) }
+    var showSpoilerWarning by remember { mutableStateOf(false) }
+    
+    if (showSpoilerWarning) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { showSpoilerWarning = false },
+            title = { Text("تحذير حرق الأحداث", color = TextPrimary, fontWeight = FontWeight.Bold, textAlign = TextAlign.End, modifier = Modifier.fillMaxWidth()) },
+            text = { Text("قد تحتوي التعليقات على حرق لأحداث المسلسل أو الفيلم.", color = TextPrimary, textAlign = TextAlign.End, modifier = Modifier.fillMaxWidth()) },
+            confirmButton = {
+                androidx.compose.material3.TextButton(onClick = { 
+                    showSpoilerWarning = false
+                    showComments = true 
+                }) {
+                    Text("الفتح على أي حال", color = com.example.ui.theme.GoldYellow)
+                }
+            },
+            dismissButton = {
+                androidx.compose.material3.TextButton(onClick = { showSpoilerWarning = false }) {
+                    Text("إلغاء", color = TextSecondary)
+                }
+            },
+            containerColor = DarkGrey
+        )
+    }
     
 
 
@@ -192,7 +215,8 @@ fun DetailsScreen(
                         val isEpWatched = state.firestoreItem?.watchedEpisodes?.contains("S${state.selectedEpisodeDetails.season_number}E${state.selectedEpisodeDetails.episode_number}") == true
                         EpisodeDetailsContent(
                             episode = state.selectedEpisodeDetails,
-                            onCommentsClick = { showComments = true },
+                            onCommentsClick = { showSpoilerWarning = true },
+                            commentsCount = state.comments.size,
                             isWatched = isEpWatched,
                             onToggleWatched = { 
                                 onEpisodeClick(
@@ -359,7 +383,7 @@ fun DetailsScreen(
                             
                             if (selectedTab == 0) {
                                 // About Tab
-                                AboutTabContent(item = item, onCommentsClick = { showComments = true }, collectionDetails = state.collectionDetails, onNavigateToDetails = onNavigateToDetails, onNavigateToPerson = onNavigateToPerson)
+                                AboutTabContent(item = item, onCommentsClick = { showSpoilerWarning = true }, commentsCount = state.comments.size, collectionDetails = state.collectionDetails, onNavigateToDetails = onNavigateToDetails, onNavigateToPerson = onNavigateToPerson)
                             } else if (selectedTab == 1 && mediaType != "tv") {
                                 // More Tab (Movies)
                                 MoreTabContent(item = item)
@@ -520,8 +544,14 @@ fun DetailsScreen(
                 val bytes = uri?.let { u ->
                     context.contentResolver.openInputStream(u)?.readBytes()
                 }
-                viewModel.addComment(text, bytes, isGif)
                 android.widget.Toast.makeText(context, "جاري نشر التعليق...", android.widget.Toast.LENGTH_SHORT).show()
+                viewModel.addComment(text, bytes, isGif) { success, errorMessage ->
+                    if (success) {
+                        android.widget.Toast.makeText(context, "تم النشر بنجاح!", android.widget.Toast.LENGTH_SHORT).show()
+                    } else {
+                        android.widget.Toast.makeText(context, errorMessage ?: "فشل نشر التعليق", android.widget.Toast.LENGTH_LONG).show()
+                    }
+                }
             }
         )
     }
@@ -710,7 +740,7 @@ if (showBottomSheet) {
 
 }
 @Composable
-fun AboutTabContent(item: MediaItem, onCommentsClick: () -> Unit, collectionDetails: com.example.data.remote.CollectionDetailsResponse?, onNavigateToDetails: (String, Int) -> Unit, onNavigateToPerson: ((Int) -> Unit)? = null) {
+fun AboutTabContent(item: MediaItem, onCommentsClick: () -> Unit, commentsCount: Int, collectionDetails: com.example.data.remote.CollectionDetailsResponse?, onNavigateToDetails: (String, Int) -> Unit, onNavigateToPerson: ((Int) -> Unit)? = null) {
     Column(modifier = Modifier.fillMaxWidth()) {
         // "أين تُشاهد" section
         Row(
@@ -893,12 +923,17 @@ fun AboutTabContent(item: MediaItem, onCommentsClick: () -> Unit, collectionDeta
             Spacer(modifier = Modifier.height(32.dp))
         }
 
+        HorizontalDivider(color = Color.DarkGray.copy(alpha = 0.3f), thickness = 1.dp)
         Row(
-            modifier = Modifier.fillMaxWidth().clickable { onCommentsClick() }.padding(vertical = 8.dp),
+            modifier = Modifier.fillMaxWidth().clickable { onCommentsClick() }.padding(vertical = 16.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(Icons.Default.KeyboardArrowLeft, contentDescription = null, tint = TextSecondary, modifier = Modifier.size(20.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Default.KeyboardArrowLeft, contentDescription = null, tint = TextSecondary, modifier = Modifier.size(20.dp))
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(text = toArabicDigits(commentsCount), color = TextSecondary, fontSize = 14.sp)
+            }
             Text(text = "التعليقات", color = TextPrimary, fontSize = 18.sp, fontWeight = FontWeight.Bold)
         }
         Spacer(modifier = Modifier.height(32.dp))
@@ -912,17 +947,14 @@ fun AboutTabContent(item: MediaItem, onCommentsClick: () -> Unit, collectionDeta
 fun EpisodeDetailsContent(
     episode: com.example.data.remote.Episode,
     onCommentsClick: () -> Unit,
+    commentsCount: Int,
     isWatched: Boolean,
     onToggleWatched: () -> Unit,
     showTitle: String,
     onNavigateBack: () -> Unit
 ) {
-    val commentCount = remember(episode.id) {
-        val id = episode.id ?: 0
-        if (id > 0) (id % 850) + 120 else 740
-    }
-    val commentCountArabic = remember(commentCount) {
-        toArabicDigits(commentCount)
+    val commentCountArabic = remember(commentsCount) {
+        toArabicDigits(commentsCount)
     }
 
     Column(modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState())) {

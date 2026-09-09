@@ -56,9 +56,9 @@ fun CommentsScreenFullScreen(
         properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)
     ) {
         Scaffold(
-            modifier = Modifier.fillMaxSize().imePadding(),
+            modifier = Modifier.fillMaxSize(),
             containerColor = TrueBlack,
-            contentWindowInsets = WindowInsets(0, 0, 0, 0),
+            contentWindowInsets = WindowInsets.safeDrawing,
             topBar = {
                 Row(
                     modifier = Modifier
@@ -216,9 +216,9 @@ fun AddCommentFullScreenDialog(
         properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)
     ) {
         Scaffold(
-            modifier = Modifier.fillMaxSize().imePadding(),
+            modifier = Modifier.fillMaxSize(),
             containerColor = TrueBlack,
-            contentWindowInsets = WindowInsets(0, 0, 0, 0),
+            contentWindowInsets = WindowInsets.safeDrawing,
             topBar = {
                 Row(
                     modifier = Modifier
@@ -255,13 +255,12 @@ fun AddCommentFullScreenDialog(
                 }
             },
             bottomBar = {
-                Column {
+                Column(modifier = Modifier.imePadding()) {
                     HorizontalDivider(color = DarkGrey)
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .navigationBarsPadding()
-                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                            .padding(horizontal = 16.dp, vertical = 16.dp),
                         horizontalArrangement = Arrangement.End,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
@@ -287,9 +286,7 @@ fun AddCommentFullScreenDialog(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .navigationBarsPadding()
-                    .imePadding()
-                    .padding(top = paddingValues.calculateTopPadding(), bottom = paddingValues.calculateBottomPadding() + 80.dp)
+                    .padding(paddingValues)
                     .padding(16.dp)
             ) {
                 TextField(

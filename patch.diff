@@ -1,0 +1,33 @@
+--- app/src/main/java/com/example/ui/screens/details/DetailsViewModel.kt
++++ app/src/main/java/com/example/ui/screens/details/DetailsViewModel.kt
+@@ -40,6 +40,7 @@
+     private val _uiState = MutableStateFlow<DetailsUiState>(DetailsUiState.Loading)
+     val uiState: StateFlow<DetailsUiState> = _uiState
+ 
++    private var currentComments: List<com.example.data.firebase.Comment> = emptyList()
++
+     init {
+         fetchDetails()
+     }
+     
+     private fun observeComments() {
+         viewModelScope.launch {
+             firestoreRepository.observeCommentsForMedia(mediaId.toString()).collect { commentsList ->
++                currentComments = commentsList
+                 val currentState = _uiState.value
+                 if (currentState is DetailsUiState.Success) {
+                     _uiState.value = currentState.copy(comments = commentsList)
+                 }
+             }
+         }
+     }
+ 
+@@ -99,7 +100,8 @@
+                         selectedSeasonDetails = seasonDetails,
+                         selectedSeasonNumber = seasonNumber,
+                         selectedEpisodeDetails = if (currentState is DetailsUiState.Success) currentState.selectedEpisodeDetails else null,
+-                        collectionDetails = collectionDetails
++                        collectionDetails = collectionDetails,
++                        comments = currentComments
+                     )
+                 }.onFailure { exception ->

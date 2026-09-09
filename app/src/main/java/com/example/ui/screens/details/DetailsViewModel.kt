@@ -40,6 +40,8 @@ class DetailsViewModel(
     private val _uiState = MutableStateFlow<DetailsUiState>(DetailsUiState.Loading)
     val uiState: StateFlow<DetailsUiState> = _uiState
 
+    private var currentComments: List<com.example.data.firebase.Comment> = emptyList()
+
     init {
         fetchDetails()
     }
@@ -48,6 +50,7 @@ class DetailsViewModel(
     private fun observeComments() {
         viewModelScope.launch {
             firestoreRepository.observeCommentsForMedia(mediaId.toString()).collect { commentsList ->
+                currentComments = commentsList
                 val currentState = _uiState.value
                 if (currentState is DetailsUiState.Success) {
                     _uiState.value = currentState.copy(comments = commentsList)
@@ -98,7 +101,8 @@ class DetailsViewModel(
                         selectedSeasonDetails = seasonDetails,
                         selectedSeasonNumber = seasonNumber,
                         selectedEpisodeDetails = if (currentState is DetailsUiState.Success) currentState.selectedEpisodeDetails else null,
-                        collectionDetails = collectionDetails
+                        collectionDetails = collectionDetails,
+                        comments = currentComments
                     )
                 }.onFailure { exception ->
                     _uiState.value = DetailsUiState.Error(exception.message ?: "Unknown error occurred")
@@ -285,24 +289,31 @@ class DetailsViewModel(
         }
     }
 
-    fun addComment(text: String, imageBytes: ByteArray?, isGif: Boolean = false) {
+    fun addComment(text: String, imageBytes: ByteArray?, isGif: Boolean = false, onComplete: (Boolean, String?) -> Unit) {
         val currentState = _uiState.value
         if (currentState is DetailsUiState.Success) {
             viewModelScope.launch {
                 val user = firestoreRepository.getCurrentUser()
+                if (user == null) {
+                    onComplete(false, "يجب تسجيل الدخول أولاً")
+                    return@launch
+                }
                 val comment = com.example.data.firebase.Comment(
                     mediaId = mediaId.toString(),
-                    userId = user?.uid ?: "",
-                    userName = user?.displayName ?: "Unknown User",
-                    userProfileImage = user?.photoUrl?.toString(),
+                    userId = user.uid,
+                    userName = user.displayName ?: "Unknown User",
+                    userProfileImage = user.photoUrl?.toString(),
                     text = text,
                     timestamp = System.currentTimeMillis(),
                     isGif = isGif
                 )
                 val result = firestoreRepository.addComment(comment, imageBytes)
-                if (result.isFailure) {
+                if (result.isSuccess) {
+                    onComplete(true, null)
+                } else {
                     val exception = result.exceptionOrNull()
                     android.util.Log.e("DetailsViewModel", "Failed to add comment", exception)
+                    onComplete(false, exception?.message ?: "حدث خطأ في قاعدة البيانات")
                 }
             }
         }
