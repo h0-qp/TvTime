@@ -75,7 +75,7 @@ fun CommentsScreenFullScreen(
             },
             floatingActionButton = {
                 FloatingActionButton(
-                    modifier = Modifier.navigationBarsPadding().padding(bottom = 64.dp, start = 16.dp),
+                    modifier = Modifier.navigationBarsPadding().padding(bottom = 120.dp, start = 16.dp, end = 16.dp),
                     onClick = { showAddDialog = true },
                     containerColor = Color.White,
                     contentColor = TrueBlack,
@@ -203,112 +203,121 @@ fun AddCommentFullScreenDialog(
 
     Dialog(
         onDismissRequest = onClose,
-        properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)
+        properties = DialogProperties(
+            usePlatformDefaultWidth = false
+            // Notice: decorFitsSystemWindows is NOT false, so it resizes normally with keyboard!
+        )
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(TrueBlack)
-                .systemBarsPadding()
-                .imePadding()
+        Surface(
+            modifier = Modifier.fillMaxSize(),
+            color = TrueBlack
         ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Box(
-                    modifier = Modifier
-                        .clip(CircleShape)
-                        .background(DarkGrey)
-                        .clickable {
-                            if (text.isNotBlank() || selectedImageUri != null) {
-                                onPublish(text, selectedImageUri, false)
-                                onClose()
-                            }
-                        }
-                        .padding(horizontal = 16.dp, vertical = 8.dp)
-                ) {
-                    Text("نشر", color = TextPrimary, fontSize = 14.sp)
-                }
-                
-                Icon(
-                    imageVector = Icons.Default.Close,
-                    contentDescription = "Close",
-                    tint = TextPrimary,
-                    modifier = Modifier
-                        .clip(CircleShape)
-                        .background(DarkGrey)
-                        .clickable { onClose() }
-                        .padding(8.dp)
-                )
-            }
-            
             Column(
                 modifier = Modifier
-                    .weight(1f)
-                    .padding(16.dp)
+                    .fillMaxSize()
+                    // No imePadding needed because dialog window resizes automatically
             ) {
-                TextField(
-                    value = text,
-                    onValueChange = { text = it },
-                    placeholder = { Text("...شارك رأيك", color = TextSecondary, modifier = Modifier.fillMaxWidth(), textAlign = androidx.compose.ui.text.style.TextAlign.End) },
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = TextFieldDefaults.colors(
-                        focusedContainerColor = Color.Transparent,
-                        unfocusedContainerColor = Color.Transparent,
-                        focusedIndicatorColor = Color.Transparent,
-                        unfocusedIndicatorColor = Color.Transparent,
-                        focusedTextColor = TextPrimary,
-                        unfocusedTextColor = TextPrimary
-                    ),
-                    textStyle = androidx.compose.ui.text.TextStyle(textAlign = androidx.compose.ui.text.style.TextAlign.End, fontSize = 18.sp)
-                )
-                
-                if (selectedImageUri != null) {
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Box {
-                        AsyncImage(
-                            model = selectedImageUri,
-                            contentDescription = "Selected Image",
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier.fillMaxWidth().height(250.dp).clip(RoundedCornerShape(12.dp))
-                        )
-                        Icon(
-                            imageVector = Icons.Default.Close,
-                            contentDescription = "Remove Image",
-                            tint = Color.White,
-                            modifier = Modifier
-                                .align(Alignment.TopEnd)
-                                .padding(8.dp)
-                                .clip(CircleShape)
-                                .background(Color.Black.copy(alpha = 0.5f))
-                                .clickable { selectedImageUri = null }
-                                .padding(4.dp)
-                        )
-                    }
-                }
-            }
-            
-            Column {
-                HorizontalDivider(color = DarkGrey)
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 16.dp),
-                    horizontalArrangement = Arrangement.Start,
+                        .padding(16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
+                    Box(
+                        modifier = Modifier
+                            .clip(CircleShape)
+                            .background(if (text.isNotBlank() || selectedImageUri != null) Color.White else DarkGrey)
+                            .clickable {
+                                if (text.isNotBlank() || selectedImageUri != null) {
+                                    onPublish(text, selectedImageUri, false)
+                                    onClose()
+                                }
+                            }
+                            .padding(horizontal = 16.dp, vertical = 8.dp)
+                    ) {
+                        Text("نشر", color = if (text.isNotBlank() || selectedImageUri != null) TrueBlack else TextPrimary, fontSize = 14.sp)
+                    }
+                    
                     Icon(
-                        imageVector = Icons.Default.Image,
-                        contentDescription = "Image",
-                        tint = TextSecondary,
-                        modifier = Modifier.size(28.dp).clickable {
-                            imagePicker.launch(androidx.activity.result.PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
-                        }
+                        imageVector = Icons.Default.Close,
+                        contentDescription = "Close",
+                        tint = TextPrimary,
+                        modifier = Modifier
+                            .clip(CircleShape)
+                            .background(DarkGrey)
+                            .clickable { onClose() }
+                            .padding(8.dp)
                     )
+                }
+                
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(16.dp)
+                ) {
+                    TextField(
+                        value = text,
+                        onValueChange = { text = it },
+                        placeholder = { Text("...شارك رأيك", color = TextSecondary, modifier = Modifier.fillMaxWidth(), textAlign = androidx.compose.ui.text.style.TextAlign.End) },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = TextFieldDefaults.colors(
+                            focusedContainerColor = Color.Transparent,
+                            unfocusedContainerColor = Color.Transparent,
+                            focusedIndicatorColor = Color.Transparent,
+                            unfocusedIndicatorColor = Color.Transparent,
+                            focusedTextColor = TextPrimary,
+                            unfocusedTextColor = TextPrimary
+                        ),
+                        textStyle = androidx.compose.ui.text.TextStyle(textAlign = androidx.compose.ui.text.style.TextAlign.End, fontSize = 18.sp)
+                    )
+                    
+                    if (selectedImageUri != null) {
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Box {
+                            AsyncImage(
+                                model = selectedImageUri,
+                                contentDescription = "Selected Image",
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.fillMaxWidth().height(250.dp).clip(RoundedCornerShape(12.dp))
+                            )
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "Remove Image",
+                                tint = Color.White,
+                                modifier = Modifier
+                                    .align(Alignment.TopEnd)
+                                    .padding(8.dp)
+                                    .clip(CircleShape)
+                                    .background(Color.Black.copy(alpha = 0.5f))
+                                    .clickable { selectedImageUri = null }
+                                    .padding(4.dp)
+                            )
+                        }
+                    }
+                }
+                
+                Column(
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    HorizontalDivider(color = DarkGrey)
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(TrueBlack)
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                        horizontalArrangement = Arrangement.Start,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Image,
+                            contentDescription = "Image",
+                            tint = Color.White,
+                            modifier = Modifier.size(28.dp).clickable {
+                                imagePicker.launch(androidx.activity.result.PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                            }
+                        )
+                    }
                 }
             }
         }
