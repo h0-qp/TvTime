@@ -115,7 +115,7 @@ class DetailsViewModel(
         viewModelScope.launch {
             val currentState = _uiState.value
             if (currentState is DetailsUiState.Success) {
-                _uiState.value = currentState.copy(isLoadingSeason = true)
+                _uiState.value = currentState.copy(isLoadingSeason = true, selectedSeasonNumber = seasonNumber)
                 val seasonResult = repository.getSeasonDetails(apiKey, mediaId, seasonNumber)
                 seasonResult.onSuccess { seasonDetails ->
                     val newState = _uiState.value
@@ -129,7 +129,17 @@ class DetailsViewModel(
                 }.onFailure {
                     val newState = _uiState.value
                     if (newState is DetailsUiState.Success) {
-                        _uiState.value = newState.copy(isLoadingSeason = false)
+                        val seasonName = newState.mediaItem.seasons?.find { it.season_number == seasonNumber }?.name ?: "الموسم $seasonNumber"
+                        _uiState.value = newState.copy(
+                            selectedSeasonDetails = com.example.data.remote.SeasonDetails(
+                                _id = "season_$seasonNumber",
+                                id = seasonNumber,
+                                name = seasonName,
+                                episodes = emptyList()
+                            ),
+                            selectedSeasonNumber = seasonNumber,
+                            isLoadingSeason = false
+                        )
                     }
                 }
             }

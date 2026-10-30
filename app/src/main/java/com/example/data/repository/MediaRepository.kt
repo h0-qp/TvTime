@@ -146,7 +146,8 @@ class MediaRepository(
     suspend fun getMediaDetails(apiKey: String, id: Int, mediaType: String): Result<com.example.data.remote.MediaItem> {
         return try {
             val response = if (mediaType == "tv") {
-                tmdbApi.getTvDetails(id, apiKey)
+                val tvDetails = tmdbApi.getTvDetails(id, apiKey)
+                ensureAnnouncedSeasons(tvDetails)
             } else {
                 tmdbApi.getMovieDetails(id, apiKey)
             }
@@ -154,6 +155,78 @@ class MediaRepository(
         } catch (e: Exception) {
             Result.failure(e)
         }
+    }
+
+    private fun ensureAnnouncedSeasons(item: com.example.data.remote.MediaItem): com.example.data.remote.MediaItem {
+        val seasons = item.seasons?.toMutableList() ?: mutableListOf()
+        val regularSeasons = seasons.filter { it.season_number > 0 }
+        val maxSeasonNum = regularSeasons.maxOfOrNull { it.season_number } ?: 0
+
+        // 1. If number_of_seasons from TMDB is greater than max regular season in list, add missing seasons
+        val reportedNumberOfSeasons = item.number_of_seasons ?: 0
+        if (reportedNumberOfSeasons > maxSeasonNum) {
+            for (s in (maxSeasonNum + 1)..reportedNumberOfSeasons) {
+                if (seasons.none { it.season_number == s }) {
+                    seasons.add(
+                        com.example.data.remote.Season(
+                            id = -s,
+                            name = "الموسم $s",
+                            season_number = s,
+                            episode_count = 0,
+                            poster_path = item.poster_path
+                        )
+                    )
+                }
+            }
+        }
+
+        val currentMaxSeason = seasons.filter { it.season_number > 0 }.maxOfOrNull { it.season_number } ?: 0
+
+        // 2. Check if show is returning, in production, or planned
+        val isReturningOrInProd = item.status?.trim()?.equals("Returning Series", ignoreCase = true) == true ||
+                item.status?.trim()?.equals("In Production", ignoreCase = true) == true ||
+                item.status?.trim()?.equals("Planned", ignoreCase = true) == true ||
+                item.in_production == true
+
+        if (isReturningOrInProd) {
+            // Check if there is already an un-aired or announced season (e.g. season with 0 episodes or > currentMaxSeason)
+            val hasAnnouncedOrZeroSeason = seasons.any { s ->
+                s.season_number > 0 && (s.season_number > currentMaxSeason || s.episode_count == 0)
+            }
+            if (!hasAnnouncedOrZeroSeason) {
+                val nextSeason = currentMaxSeason + 1
+                seasons.add(
+                    com.example.data.remote.Season(
+                        id = -nextSeason,
+                        name = "الموسم $nextSeason",
+                        season_number = nextSeason,
+                        episode_count = 0,
+                        poster_path = item.poster_path
+                    )
+                )
+            }
+        }
+
+        // 3. Check if next_episode_to_air has a season number not in seasons list
+        val nextEpSeason = item.next_episode_to_air?.season_number
+        if (nextEpSeason != null && nextEpSeason > 0 && seasons.none { it.season_number == nextEpSeason }) {
+            seasons.add(
+                com.example.data.remote.Season(
+                    id = -nextEpSeason,
+                    name = "الموسم $nextEpSeason",
+                    season_number = nextEpSeason,
+                    episode_count = 0,
+                    poster_path = item.poster_path
+                )
+            )
+        }
+
+        val sortedSeasons = seasons.sortedBy { it.season_number }
+        val newCount = sortedSeasons.filter { it.season_number > 0 }.size
+        return item.copy(
+            seasons = sortedSeasons,
+            number_of_seasons = maxOf(item.number_of_seasons ?: 0, newCount)
+        )
     }
 
     suspend fun getPersonDetails(apiKey: String, personId: Int): Result<com.example.data.remote.PersonDetails> {

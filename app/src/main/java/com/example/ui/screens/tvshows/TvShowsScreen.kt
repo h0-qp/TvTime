@@ -193,11 +193,12 @@ fun TvShowsScreen(
                             Text("لا توجد حلقات مرتقبة قريباً.", color = TextSecondary)
                         }
                     } else {
-                        val todayEpisodes = successState.upcomingEpisodes.filter { it.daysDifference == 0L }
-                        val tomorrowEpisodes = successState.upcomingEpisodes.filter { it.daysDifference == 1L }
-                        val weekdayEpisodes = successState.upcomingEpisodes.filter { it.daysDifference in 2L..7L }
-                        val laterEpisodes = successState.upcomingEpisodes.filter { it.daysDifference > 7L }
-                        val pastEpisodes = successState.upcomingEpisodes.filter { it.daysDifference < 0L }
+                        val todayEpisodes = successState.upcomingEpisodes.filter { it.daysDifference == 0L && !it.episodeToAir.air_date.isNullOrEmpty() }
+                        val tomorrowEpisodes = successState.upcomingEpisodes.filter { it.daysDifference == 1L && !it.episodeToAir.air_date.isNullOrEmpty() }
+                        val weekdayEpisodes = successState.upcomingEpisodes.filter { it.daysDifference in 2L..7L && !it.episodeToAir.air_date.isNullOrEmpty() }
+                        val laterEpisodes = successState.upcomingEpisodes.filter { it.daysDifference > 7L && it.daysDifference != 999999L && !it.episodeToAir.air_date.isNullOrEmpty() }
+                        val pastEpisodes = successState.upcomingEpisodes.filter { it.daysDifference < 0L && !it.episodeToAir.air_date.isNullOrEmpty() }
+                        val unscheduledEpisodes = successState.upcomingEpisodes.filter { it.daysDifference == 999999L || it.episodeToAir.air_date.isNullOrEmpty() }
 
                         val weekdayGroups = weekdayEpisodes
                             .groupBy { epData ->
@@ -274,6 +275,18 @@ fun TvShowsScreen(
                             if (laterEpisodes.isNotEmpty()) {
                                 item { SectionHeader("لاحقاً") }
                                 items(laterEpisodes, key = { "later_${it.show.id}_${it.episodeToAir.id}" }) { ep ->
+                                    UpcomingEpisodeCard(
+                                        epData = ep,
+                                        onNavigateToDetails = onNavigateToDetails,
+                                        modifier = Modifier.animateItemPlacement()
+                                    )
+                                }
+                            }
+
+                            // 6. Unscheduled / TBA episodes (no release date yet)
+                            if (unscheduledEpisodes.isNotEmpty()) {
+                                item { SectionHeader("لم يحدد موعد العرض بعد") }
+                                items(unscheduledEpisodes, key = { "unscheduled_${it.show.id}_${it.episodeToAir.id}_${it.episodeToAir.season_number}" }) { ep ->
                                     UpcomingEpisodeCard(
                                         epData = ep,
                                         onNavigateToDetails = onNavigateToDetails,
@@ -481,24 +494,52 @@ fun UpcomingEpisodeCard(
 
         Spacer(modifier = Modifier.width(16.dp))
 
-        // 3. Left Side: Precise Time & Platform text
-        Column(
-            horizontalAlignment = Alignment.End,
-            verticalArrangement = Arrangement.Center
-        ) {
-            Text(
-                text = preciseTime,
-                color = TextPrimary,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Bold
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = platform,
-                color = TextSecondary,
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Bold
-            )
+        // 3. Left Side: Precise Time & Platform text or TBA badge
+        val isUnscheduled = epData.episodeToAir.air_date.isNullOrEmpty() || epData.daysDifference == 999999L
+        if (isUnscheduled) {
+            Column(
+                horizontalAlignment = Alignment.End,
+                verticalArrangement = Arrangement.Center
+            ) {
+                Box(
+                    modifier = Modifier
+                        .background(GoldYellow.copy(alpha = 0.2f), RoundedCornerShape(6.dp))
+                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                ) {
+                    Text(
+                        text = "قريباً",
+                        color = GoldYellow,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "لم يحدد بعد",
+                    color = TextSecondary,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Normal
+                )
+            }
+        } else {
+            Column(
+                horizontalAlignment = Alignment.End,
+                verticalArrangement = Arrangement.Center
+            ) {
+                Text(
+                    text = preciseTime,
+                    color = TextPrimary,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = platform,
+                    color = TextSecondary,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
         }
     }
 }

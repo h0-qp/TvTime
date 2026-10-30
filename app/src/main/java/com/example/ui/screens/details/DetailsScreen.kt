@@ -397,6 +397,11 @@ fun DetailsScreen(
                                         items(item.seasons) { season ->
                                             if (season.season_number > 0) {
                                                 val isSelected = state.selectedSeasonNumber == season.season_number
+                                                val displayName = when {
+                                                    season.name.startsWith("Season ", ignoreCase = true) -> "الموسم " + season.name.substring(7)
+                                                    season.name.equals("Specials", ignoreCase = true) -> "الحلقات الخاصة"
+                                                    else -> season.name
+                                                }
                                                 Box(
                                                     modifier = Modifier
                                                         .clip(RoundedCornerShape(8.dp))
@@ -405,7 +410,7 @@ fun DetailsScreen(
                                                         .padding(horizontal = 16.dp, vertical = 8.dp)
                                                 ) {
                                                     Text(
-                                                        text = season.name,
+                                                        text = displayName,
                                                         color = if (isSelected) TrueBlack else TextPrimary,
                                                         fontWeight = FontWeight.Bold
                                                     )
@@ -417,110 +422,190 @@ fun DetailsScreen(
                                     Spacer(modifier = Modifier.height(24.dp))
                                     
                                     if (state.isLoadingSeason) {
-                                        CircularProgressIndicator(color = GoldYellow, modifier = Modifier.align(Alignment.CenterHorizontally))
+                                        Box(
+                                            modifier = Modifier.fillMaxWidth().padding(vertical = 32.dp),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            CircularProgressIndicator(color = GoldYellow)
+                                        }
                                     } else if (state.selectedSeasonDetails != null) {
-                                        state.selectedSeasonDetails.episodes.forEach { episode ->
-                                            val episodeKey = "S${episode.season_number}E${episode.episode_number}"
-                                            val isWatched = state.firestoreItem?.watchedEpisodes?.contains(episodeKey) == true
-                                            
-                                            val (isAired, countdownText) = try {
-                                                if (episode.air_date.isNullOrEmpty()) {
-                                                    Pair(true, "")
-                                                } else {
-                                                    val airDate = LocalDate.parse(episode.air_date)
-                                                    val now = LocalDateTime.now()
-                                                    val airDateTime = airDate.atTime(20, 0) // Assume 8 PM drop
-                                                    
-                                                    if (now.isAfter(airDateTime)) {
-                                                        Pair(true, "")
+                                        if (state.selectedSeasonDetails.episodes.isEmpty()) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .padding(vertical = 12.dp)
+                                                    .background(DarkGrey, RoundedCornerShape(16.dp))
+                                                    .border(1.dp, GoldYellow.copy(alpha = 0.3f), RoundedCornerShape(16.dp))
+                                                    .padding(24.dp),
+                                                contentAlignment = Alignment.Center
+                                            ) {
+                                                Column(
+                                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                                    verticalArrangement = Arrangement.Center
+                                                ) {
+                                                    Box(
+                                                        modifier = Modifier
+                                                            .size(56.dp)
+                                                            .background(GoldYellow.copy(alpha = 0.15f), androidx.compose.foundation.shape.CircleShape),
+                                                        contentAlignment = Alignment.Center
+                                                    ) {
+                                                        Icon(
+                                                            imageVector = Icons.Default.DateRange,
+                                                            contentDescription = null,
+                                                            tint = GoldYellow,
+                                                            modifier = Modifier.size(30.dp)
+                                                        )
+                                                    }
+                                                    Spacer(modifier = Modifier.height(14.dp))
+                                                    Text(
+                                                        text = "الموسم معلن عنه رسمياً",
+                                                        color = TextPrimary,
+                                                        fontWeight = FontWeight.Bold,
+                                                        fontSize = 17.sp,
+                                                        textAlign = TextAlign.Center
+                                                    )
+                                                    Spacer(modifier = Modifier.height(8.dp))
+                                                    Text(
+                                                        text = "لم يتم الإعلان عن عدد الحلقات أو موعد العرض بعد.\nستظهر الحلقات وتفاصيلها هنا تلقائياً بمجرد الإعلان عنها وتحديثها.",
+                                                        color = TextSecondary,
+                                                        fontSize = 13.sp,
+                                                        textAlign = TextAlign.Center,
+                                                        lineHeight = 20.sp
+                                                    )
+                                                    Spacer(modifier = Modifier.height(14.dp))
+                                                    Box(
+                                                        modifier = Modifier
+                                                            .background(GoldYellow, RoundedCornerShape(20.dp))
+                                                            .padding(horizontal = 14.dp, vertical = 6.dp)
+                                                    ) {
+                                                        Text(
+                                                            text = "قريباً",
+                                                            color = TrueBlack,
+                                                            fontWeight = FontWeight.Bold,
+                                                            fontSize = 12.sp
+                                                        )
+                                                    }
+                                                }
+                                            }
+                                        } else {
+                                            state.selectedSeasonDetails.episodes.forEach { episode ->
+                                                val episodeKey = "S${episode.season_number}E${episode.episode_number}"
+                                                val isWatched = state.firestoreItem?.watchedEpisodes?.contains(episodeKey) == true
+                                                
+                                                val hasAirDate = !episode.air_date.isNullOrEmpty()
+                                                val (isAired, countdownText) = try {
+                                                    if (!hasAirDate) {
+                                                        Pair(false, "لم يحدد بعد")
                                                     } else {
-                                                        val days = ChronoUnit.DAYS.between(now.toLocalDate(), airDate)
-                                                        if (days > 0) {
-                                                            Pair(false, "$days يوم")
+                                                        val airDate = LocalDate.parse(episode.air_date)
+                                                        val now = LocalDateTime.now()
+                                                        val airDateTime = airDate.atTime(20, 0) // Assume 8 PM drop
+                                                        
+                                                        if (now.isAfter(airDateTime)) {
+                                                            Pair(true, "")
                                                         } else {
-                                                            val hours = ChronoUnit.HOURS.between(now, airDateTime)
-                                                            if (hours > 0) {
-                                                                Pair(false, "$hours ساعة")
+                                                            val days = ChronoUnit.DAYS.between(now.toLocalDate(), airDate)
+                                                            if (days > 0) {
+                                                                Pair(false, "$days يوم")
                                                             } else {
-                                                                val minutes = ChronoUnit.MINUTES.between(now, airDateTime)
-                                                                Pair(false, "$minutes دقيقة")
+                                                                val hours = ChronoUnit.HOURS.between(now, airDateTime)
+                                                                if (hours > 0) {
+                                                                    Pair(false, "$hours ساعة")
+                                                                } else {
+                                                                    val minutes = ChronoUnit.MINUTES.between(now, airDateTime)
+                                                                    Pair(false, "$minutes دقيقة")
+                                                                }
                                                             }
                                                         }
                                                     }
+                                                } catch (e: Exception) {
+                                                    Pair(false, "لم يحدد بعد")
                                                 }
-                                            } catch (e: Exception) {
-                                                Pair(true, "")
-                                            }
-                                            
-                                            Row(
-                                                modifier = Modifier
-                                                    .fillMaxWidth()
-                                                    .padding(vertical = 8.dp)
-                                                    .clip(RoundedCornerShape(8.dp))
-                                                    .background(DarkGrey)
-                                                    .clickable { viewModel.selectEpisode(episode) },
-                                                verticalAlignment = Alignment.CenterVertically
-                                            ) {
-                                                // Image on the right (assuming RTL)
-                                                AsyncImage(
-                                                    model = episode.still_path?.let { "https://image.tmdb.org/t/p/w300$it" },
-                                                    contentDescription = episode.name,
-                                                    contentScale = ContentScale.Crop,
+                                                
+                                                Row(
                                                     modifier = Modifier
-                                                        .width(100.dp)
-                                                        .height(70.dp)
-                                                        .background(Color.DarkGray)
-                                                )
-                                                
-                                                Spacer(modifier = Modifier.width(16.dp))
-                                                
-                                                // Details in Middle
-                                                Column(modifier = Modifier.weight(1f).padding(vertical = 12.dp)) {
-                                                    val seasonNumberStr = String.format("%02d", episode.season_number)
-                                                    val episodeNumberStr = String.format("%02d", episode.episode_number)
-                                                    Text(
-                                                        text = "S$seasonNumberStr | E$episodeNumberStr",
-                                                        color = TextPrimary,
-                                                        fontWeight = FontWeight.Bold,
-                                                        fontSize = 16.sp
-                                                    )
-                                                    Spacer(modifier = Modifier.height(4.dp))
-                                                    Text(
-                                                        text = episode.name,
-                                                        color = TextSecondary,
-                                                        fontSize = 12.sp,
-                                                        lineHeight = 16.sp,
-                                                        maxLines = 1,
-                                                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
-                                                    )
-                                                }
-                                                
-                                                Spacer(modifier = Modifier.width(16.dp))
-                                                
-                                                // Checkmark on the left (assuming RTL)
-                                                if (isAired) {
-                                                    Box(
+                                                        .fillMaxWidth()
+                                                        .padding(vertical = 8.dp)
+                                                        .clip(RoundedCornerShape(8.dp))
+                                                        .background(DarkGrey)
+                                                        .clickable { viewModel.selectEpisode(episode) },
+                                                    verticalAlignment = Alignment.CenterVertically
+                                                ) {
+                                                    // Image on the right (assuming RTL)
+                                                    AsyncImage(
+                                                        model = episode.still_path?.let { "https://image.tmdb.org/t/p/w300$it" },
+                                                        contentDescription = episode.name,
+                                                        contentScale = ContentScale.Crop,
                                                         modifier = Modifier
-                                                            .padding(end = 16.dp)
-                                                            .size(32.dp)
-                                                            .clip(androidx.compose.foundation.shape.CircleShape)
-                                                            .background(if (isWatched) Color(0xFF81C784) else Color.Transparent)
-                                                            .border(2.dp, if (isWatched) Color(0xFF81C784) else TextSecondary, androidx.compose.foundation.shape.CircleShape)
-                                                            .clickable { onEpisodeClick(episode.season_number, episode.episode_number, isWatched) },
-                                                        contentAlignment = Alignment.Center
-                                                    ) {
-                                                        if (isWatched) {
+                                                            .width(100.dp)
+                                                            .height(70.dp)
+                                                            .background(Color.DarkGray)
+                                                    )
+                                                    
+                                                    Spacer(modifier = Modifier.width(16.dp))
+                                                    
+                                                    // Details in Middle
+                                                    Column(modifier = Modifier.weight(1f).padding(vertical = 12.dp)) {
+                                                        val seasonNumberStr = String.format("%02d", episode.season_number)
+                                                        val episodeNumberStr = String.format("%02d", episode.episode_number)
+                                                        Text(
+                                                            text = "S$seasonNumberStr | E$episodeNumberStr",
+                                                            color = TextPrimary,
+                                                            fontWeight = FontWeight.Bold,
+                                                            fontSize = 16.sp
+                                                        )
+                                                        Spacer(modifier = Modifier.height(4.dp))
+                                                        Text(
+                                                            text = episode.name,
+                                                            color = TextSecondary,
+                                                            fontSize = 12.sp,
+                                                            lineHeight = 16.sp,
+                                                            maxLines = 1,
+                                                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                                                        )
+                                                    }
+                                                    
+                                                    Spacer(modifier = Modifier.width(16.dp))
+                                                    
+                                                    // Status indicator on the left
+                                                    if (isWatched) {
+                                                        Box(
+                                                            modifier = Modifier
+                                                                .padding(end = 16.dp)
+                                                                .size(32.dp)
+                                                                .clip(androidx.compose.foundation.shape.CircleShape)
+                                                                .background(Color(0xFF81C784))
+                                                                .border(2.dp, Color(0xFF81C784), androidx.compose.foundation.shape.CircleShape)
+                                                                .clickable { onEpisodeClick(episode.season_number, episode.episode_number, isWatched) },
+                                                            contentAlignment = Alignment.Center
+                                                        ) {
                                                             Icon(Icons.Default.Check, contentDescription = "Watched", tint = TrueBlack, modifier = Modifier.size(20.dp))
                                                         }
+                                                    } else if (isAired) {
+                                                        Box(
+                                                            modifier = Modifier
+                                                                .padding(end = 16.dp)
+                                                                .size(32.dp)
+                                                                .clip(androidx.compose.foundation.shape.CircleShape)
+                                                                .border(2.dp, TextSecondary, androidx.compose.foundation.shape.CircleShape)
+                                                                .clickable { onEpisodeClick(episode.season_number, episode.episode_number, isWatched) },
+                                                            contentAlignment = Alignment.Center
+                                                        ) {}
+                                                    } else {
+                                                        Box(
+                                                            modifier = Modifier
+                                                                .padding(end = 12.dp)
+                                                                .background(Color(0xFF2C2C2C), RoundedCornerShape(8.dp))
+                                                                .padding(horizontal = 8.dp, vertical = 4.dp)
+                                                        ) {
+                                                            Text(
+                                                                text = countdownText,
+                                                                color = GoldYellow,
+                                                                fontSize = 11.sp,
+                                                                fontWeight = FontWeight.Bold
+                                                            )
+                                                        }
                                                     }
-                                                } else {
-                                                    Text(
-                                                        text = countdownText,
-                                                        color = GoldYellow,
-                                                        fontSize = 12.sp,
-                                                        fontWeight = FontWeight.Bold,
-                                                        modifier = Modifier.padding(end = 16.dp)
-                                                    )
                                                 }
                                             }
                                         }
@@ -1286,7 +1371,7 @@ private fun toArabicDigits(number: Int): String {
 }
 
 private fun formatDateToArabic(airDate: String?): String {
-    if (airDate.isNullOrEmpty()) return "غير معروف"
+    if (airDate.isNullOrEmpty()) return "لم يحدد موعد العرض بعد"
     return try {
         val localDate = LocalDate.parse(airDate)
         val day = localDate.dayOfMonth

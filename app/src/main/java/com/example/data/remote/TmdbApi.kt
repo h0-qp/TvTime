@@ -159,6 +159,7 @@ data class MediaItem(
     val runtime: Int? = null,
     val episode_run_time: List<Int>? = null,
     val belongs_to_collection: CollectionReference? = null,
+    val in_production: Boolean? = null,
     @Json(name = "watch/providers") val watch_providers: WatchProvidersResponse? = null)
 
 data class CollectionReference(
@@ -181,18 +182,19 @@ data class EpisodeToAir(
     val id: Int,
     val name: String,
     val overview: String? = null,
-    val air_date: String,
+    val air_date: String? = null,
     val episode_number: Int,
     val season_number: Int,
     val still_path: String?
 )
 
 data class Season(
-    val id: Int,
+    val id: Int = 0,
     val name: String,
     val season_number: Int,
     val episode_count: Int,
-    val poster_path: String?
+    val poster_path: String? = null,
+    val air_date: String? = null
 )
 
 data class Episode(
@@ -207,10 +209,10 @@ data class Episode(
 )
 
 data class SeasonDetails(
-    val _id: String,
-    val id: Int,
-    val name: String,
-    val episodes: List<Episode>
+    val _id: String? = null,
+    val id: Int? = null,
+    val name: String? = null,
+    val episodes: List<Episode> = emptyList()
 )
 
 

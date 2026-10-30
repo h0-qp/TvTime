@@ -387,11 +387,9 @@ class TvShowsViewModel(
                                                         
                             val targetSeason = nextEpisode?.season_number ?: lastEpisode?.season_number
                             
-                            if (targetSeason != null) {
-                                val seasonDetails = repository.getSeasonDetails(apiKey, media.id, targetSeason).getOrNull()
-                                
-                                val processEpisode = { ep: EpisodeToAir? ->
-                                    if (ep != null && ep.air_date?.isNotEmpty() == true) {
+                            val processEpisode = { ep: EpisodeToAir? ->
+                                if (ep != null) {
+                                    if (!ep.air_date.isNullOrEmpty()) {
                                         val airDate = try { LocalDate.parse(ep.air_date) } catch (e: Exception) { null }
                                         if (airDate != null) {
                                             val diff = ChronoUnit.DAYS.between(today, airDate)
@@ -399,13 +397,21 @@ class TvShowsViewModel(
                                                 val showNewBadge = (diff == 0L || diff == -1L)
                                                 epDataList.add(UpcomingEpisodeData(media, details, ep, diff, showNewBadge))
                                             }
+                                        } else {
+                                            epDataList.add(UpcomingEpisodeData(media, details, ep, 999999L, false))
                                         }
+                                    } else {
+                                        epDataList.add(UpcomingEpisodeData(media, details, ep, 999999L, false))
                                     }
                                 }
+                            }
+
+                            if (targetSeason != null) {
+                                val seasonDetails = repository.getSeasonDetails(apiKey, media.id, targetSeason).getOrNull()
                                 
                                 if (seasonDetails != null) {
                                     seasonDetails.episodes.forEach { episode ->
-                                        if (episode.air_date != null && episode.air_date.isNotEmpty()) {
+                                        if (!episode.air_date.isNullOrEmpty()) {
                                             val airDate = try { LocalDate.parse(episode.air_date) } catch (e: Exception) { null }
                                             if (airDate != null) {
                                                 val diff = ChronoUnit.DAYS.between(today, airDate)
@@ -415,14 +421,36 @@ class TvShowsViewModel(
                                                         id = episode.id,
                                                         name = episode.name,
                                                         overview = episode.overview,
-                                                        air_date = episode.air_date ?: "",
+                                                        air_date = episode.air_date,
                                                         episode_number = episode.episode_number,
                                                         season_number = episode.season_number,
                                                         still_path = episode.still_path
                                                     )
                                                     epDataList.add(UpcomingEpisodeData(media, details, episodeToAir, diff, showNewBadge))
                                                 }
+                                            } else {
+                                                val episodeToAir = EpisodeToAir(
+                                                    id = episode.id,
+                                                    name = episode.name,
+                                                    overview = episode.overview,
+                                                    air_date = episode.air_date ?: "",
+                                                    episode_number = episode.episode_number,
+                                                    season_number = episode.season_number,
+                                                    still_path = episode.still_path
+                                                )
+                                                epDataList.add(UpcomingEpisodeData(media, details, episodeToAir, 999999L, false))
                                             }
+                                        } else {
+                                            val episodeToAir = EpisodeToAir(
+                                                id = episode.id,
+                                                name = episode.name,
+                                                overview = episode.overview,
+                                                air_date = "",
+                                                episode_number = episode.episode_number,
+                                                season_number = episode.season_number,
+                                                still_path = episode.still_path
+                                            )
+                                            epDataList.add(UpcomingEpisodeData(media, details, episodeToAir, 999999L, false))
                                         }
                                     }
                                 }
@@ -434,6 +462,32 @@ class TvShowsViewModel(
                                 // Ensure nextEpisode is included if seasonDetails failed or missed it
                                 if (nextEpisode != null && epDataList.none { it.episodeToAir.id == nextEpisode.id }) {
                                     processEpisode(nextEpisode)
+                                }
+                            }
+
+                            // If no upcoming or future episodes, but show is returning or has announced season:
+                            if (epDataList.none { it.daysDifference >= 0L }) {
+                                val isReturningOrInProd = details.status?.trim()?.equals("Returning Series", ignoreCase = true) == true ||
+                                        details.status?.trim()?.equals("In Production", ignoreCase = true) == true ||
+                                        details.status?.trim()?.equals("Planned", ignoreCase = true) == true ||
+                                        details.in_production == true
+                                val announcedSeason = details.seasons?.find { it.season_number > 0 && it.episode_count == 0 }
+                                val nextSeasonNum = announcedSeason?.season_number
+                                    ?: if (isReturningOrInProd) {
+                                        (details.seasons?.filter { it.season_number > 0 }?.maxOfOrNull { it.season_number } ?: 0) + 1
+                                    } else null
+
+                                if (nextSeasonNum != null && nextSeasonNum > 0) {
+                                    val announcedEp = EpisodeToAir(
+                                        id = -details.id,
+                                        name = "الموسم $nextSeasonNum (معلن عنه رسمياً)",
+                                        overview = "تم الإعلان عن الموسم رسمياً. ستظهر الحلقات والمواعيد فور صدورها.",
+                                        air_date = "",
+                                        episode_number = 1,
+                                        season_number = nextSeasonNum,
+                                        still_path = details.backdrop_path ?: details.poster_path
+                                    )
+                                    epDataList.add(UpcomingEpisodeData(media, details, announcedEp, 999999L, false))
                                 }
                             }
                         }
